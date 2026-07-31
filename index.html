@@ -411,51 +411,80 @@ async function supabaseCall(method,path,data=null){
   try{
     const opts={method,headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}};
     if(data) opts.body=JSON.stringify(data);
+    
+    console.log(`🔄 ${method} ${SUPABASE_URL}${path}`);
     const res=await fetch(SUPABASE_URL+path,opts);
-    if(!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
-    return await res.json();
+    
+    let responseData;
+    try{
+      responseData=await res.json();
+    }catch(e){
+      responseData={error:'Could not parse JSON response'};
+    }
+    
+    if(!res.ok){
+      console.error(`❌ ${res.status}:`,responseData);
+      return {error: responseData.message||res.statusText};
+    }
+    
+    console.log(`✅ ${method} Success:`,responseData);
+    return responseData;
   }catch(err){
-    console.error('Supabase error:',err);
-    return null;
+    console.error('🔥 Network error:',err.message);
+    return {error: err.message};
   }
 }
 
-// Sync a single record to DB (UPSERT)
+// Sync a single record to DB (INSERT or UPDATE)
 async function syncRecordToSupabase(record){
   const payload={
     record_id: record.id,
-    name: record.name,
-    phone: record.phone,
-    state: record.state,
-    district: record.district,
-    city: record.city,
-    fm: record.fm,
-    status: record.status,
-    meetingDone: record.meetingDone,
-    meetingDate: record.meetingDate,
-    decision: record.decision,
-    decisionDate: record.decisionDate,
-    loaDone: record.loaDone,
-    loaDate: record.loaDate,
-    agreeDone: record.agreeDone,
-    agreeDate: record.agreeDate,
-    refundDone: record.refundDone,
-    refundDate: record.refundDate,
-    nextAction: record.nextAction,
-    notes: record.notes,
+    name: record.name||'',
+    phone: record.phone||'',
+    state: record.state||'',
+    district: record.district||'',
+    city: record.city||'',
+    fm: record.fm||'',
+    status: record.status||'',
+    meetingDone: !!record.meetingDone,
+    meetingDate: record.meetingDate||null,
+    decision: record.decision||'',
+    decisionDate: record.decisionDate||null,
+    loaDone: !!record.loaDone,
+    loaDate: record.loaDate||null,
+    agreeDone: !!record.agreeDone,
+    agreeDate: record.agreeDate||null,
+    refundDone: !!record.refundDone,
+    refundDate: record.refundDate||null,
+    nextAction: record.nextAction||'',
+    notes: record.notes||'',
     updated_by: 'webapp_user',
     updated_at: new Date().toISOString()
   };
   
-  // Try UPSERT: insert or update on conflict
-  const res=await supabaseCall('POST','/'+SUPABASE_TABLE,payload);
-  if(res&&res.length>0) return true;
+  console.log('📤 Syncing record:', record.id, record.name);
   
-  // Fallback: try PATCH for update
-  if(res===null||res.length===0){
-    const patchRes=await supabaseCall('PATCH','/'+SUPABASE_TABLE+'?record_id=eq.'+encodeURIComponent(record.id),payload);
-    return patchRes!==null;
+  // Step 1: Try INSERT first
+  const insertRes=await supabaseCall('POST','/'+SUPABASE_TABLE,payload);
+  if(insertRes&&!insertRes.error){
+    console.log('✅ Record inserted:', record.id);
+    return true;
   }
+  
+  // Step 2: If INSERT failed (likely duplicate), try UPDATE
+  if(insertRes&&insertRes.error&&insertRes.error.includes('duplicate')){
+    console.log('⚠️ Record exists, updating:', record.id);
+    const updateRes=await supabaseCall('PATCH','/'+SUPABASE_TABLE+'?record_id=eq.'+encodeURIComponent(record.id),payload);
+    if(updateRes&&!updateRes.error){
+      console.log('✅ Record updated:', record.id);
+      return true;
+    }else{
+      console.error('❌ Update failed:', updateRes?.error||'Unknown error');
+      return false;
+    }
+  }
+  
+  console.error('❌ Insert failed:', insertRes?.error||'Unknown error');
   return false;
 }
 
