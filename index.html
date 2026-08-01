@@ -416,25 +416,40 @@ const SB_URL='https://efxssxxseijokoimgest.supabase.co/rest/v1';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmeHNzeHhzZWlqb2tvaW1nZXN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODMyNzEsImV4cCI6MjEwMTA1OTI3MX0.BE67_Rz6XD6arIOzwW74LDhLFyJ_4osZFQK1-Cy1wMw';
 const SB_H={ 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Content-Type':'application/json' };
 let SB_OK=false, SB_LAST_ERR='';
+// Explicit map: app record key (camelCase) -> DB column (lowercase).
+// The app uses camelCase internally; the Supabase columns are all lowercase.
+const SB_FIELD_MAP={
+  id:'id', name:'name', phone:'phone', email:'email', model:'model', fm:'fm',
+  state:'state', district:'district', source:'source',
+  tokenDate:'tokendate',
+  loaDone:'loadone', loaDate:'loadate', loaNotified:'loanotified',
+  meetingDone:'meetingdone', meetingDate:'meetingdate',
+  decision:'decision', decisionDate:'decisiondate',
+  refundDone:'refunddone', refundDate:'refunddate', refundNotified:'refundnotified',
+  agreePaidDate:'agreepaiddate', agreementNotified:'agreementnotified',
+  agreeDone:'agreedone', agreeDate:'agreedate',
+  careNotified:'carenotified',
+  payments:'payments', fullPaidDate:'fullpaiddate'
+};
+const SB_ROW_TO_APP=Object.fromEntries(Object.entries(SB_FIELD_MAP).map(([app,db])=>[db,app]));
 
-// Columns that exist in the franchisees table (whitelist — anything else stays local only)
-const SB_FR_COLS=['id','name','phone','email','model','fm','state','district','source','tokendate',
-  'loadone','loadate','loanotified','meetingdone','meetingdate','decision','decisiondate',
-  'refunddone','refunddate','refundnotified','agreepaiddate','agreementnotified','agreedone',
-  'agreedate','carenotified','payments','fullpaiddate'];
-
-// App record (camelCase-ish keys) -> DB row (lowercase). Our app already uses lowercase keys
-// matching the columns, except a couple. Map explicitly to be safe.
+// App record (camelCase) -> DB row (lowercase)
 function recToRow(r){
   const row={};
-  SB_FR_COLS.forEach(c=>{ if(r[c]!==undefined) row[c]=r[c]; });
+  for(const [appKey,dbCol] of Object.entries(SB_FIELD_MAP)){
+    if(r[appKey]!==undefined) row[dbCol]=r[appKey];
+  }
   row.id=r.id;
   row.payments = Array.isArray(r.payments)?r.payments:[];
   return row;
 }
+// DB row (lowercase) -> app record (camelCase)
 function rowToRec(row){
   const r={};
-  SB_FR_COLS.forEach(c=>{ if(row[c]!==undefined && row[c]!==null) r[c]=row[c]; });
+  for(const [dbCol,val] of Object.entries(row)){
+    const appKey=SB_ROW_TO_APP[dbCol];
+    if(appKey && val!==null && val!==undefined) r[appKey]=val;
+  }
   r.payments = Array.isArray(row.payments)?row.payments:[];
   return r;
 }
@@ -1110,7 +1125,7 @@ function renderDrawer(){
     const rr=RECORDS.find(x=>x.id===openId); if(!rr)return;
     rr.state=ds.value; rr.district='';
     fillDistrictSelect(dd, ds.value, '');
-    await save(); renderTable();
+    await saveOne(rr); renderTable();
   });
 
   // lead source (with custom "Other" support)
@@ -1125,7 +1140,7 @@ function renderDrawer(){
     let v=dsrc.value;
     if(v==='Other'){ v=dsrcOther.value.trim()||'Other'; }
     rr.source=v;
-    await save(); renderTable();
+    await saveOne(rr); renderTable();
   };
   dsrc.addEventListener('change',()=>{
     dsrcOtherWrap.style.display = dsrc.value==='Other' ? 'block' : 'none';
@@ -1215,7 +1230,7 @@ document.getElementById('dBody').addEventListener('change',async e=>{
   if(f==='loaDone'&&r.loaDone&&!r.loaDate) r.loaDate=new Date().toISOString().slice(0,10);
   if(f==='agreeDone'&&r.agreeDone&&!r.agreeDate) r.agreeDate=new Date().toISOString().slice(0,10);
   if(f==='refundDone'&&r.refundDone&&!r.refundDate) r.refundDate=new Date().toISOString().slice(0,10);
-  await save(); renderAll();
+  await saveOne(r); renderAll();
 });
 document.getElementById('dBody').addEventListener('click',async e=>{
   const r=RECORDS.find(x=>x.id===openId); if(!r) return;
@@ -1239,12 +1254,12 @@ document.getElementById('dBody').addEventListener('click',async e=>{
     r.payments.push({amt,date,note:document.getElementById('pNote').value});
     r.payments.sort((a,b)=>a.date.localeCompare(b.date));
     if(balance(r)<=0&&!r.fullPaidDate) r.fullPaidDate=date;
-    await save(); renderAll(); toast('Payment recorded.');
+    await saveOne(r); renderAll(); toast('Payment recorded.');
   }
   if(e.target.dataset.del!==undefined){
     r.payments.splice(Number(e.target.dataset.del),1);
     if(balance(r)>0) r.fullPaidDate=null;
-    await save(); renderAll();
+    await saveOne(r); renderAll();
   }
   if(e.target.id==='dDelete'){
     if(!confirm('Delete '+r.name+' and all their payment history?')) return;
