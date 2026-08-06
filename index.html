@@ -73,8 +73,17 @@ th{text-align:left;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;
 td{padding:12px;border-bottom:1px solid rgba(38,54,74,.5);vertical-align:middle;font-size:13px}
 tbody tr{cursor:pointer;transition:.12s}
 tbody tr:hover{background:var(--panel2)}
-tbody tr.hasflag td:first-child{box-shadow:inset 3px 0 0 var(--red)}
-.nmcell{font-weight:600;color:#fff}
+
+/* --- Frozen first two columns: Franchisee + Manager --- */
+th.freeze, td.freeze{position:sticky;background:var(--panel);z-index:3}
+tbody tr:hover td.freeze{background:var(--panel2)}
+th.freeze{z-index:5}
+/* column 1: Franchisee */
+th.freeze-1, td.freeze-1{left:0;min-width:190px;max-width:190px}
+/* column 2: Manager */
+th.freeze-2, td.freeze-2{left:190px;min-width:120px;max-width:120px;box-shadow:6px 0 8px -6px rgba(0,0,0,.55)}
+tbody tr.hasflag td.freeze-1{box-shadow:inset 3px 0 0 var(--red)}
+.nmcell{font-weight:600;color:#fff;white-space:normal;word-break:break-word;line-height:1.3}
 .nmcell small{display:block;font-family:'JetBrains Mono',monospace;font-weight:400;color:var(--faint);font-size:11px;margin-top:2px}
 .chip{display:inline-block;padding:4px 9px;border-radius:7px;font-size:11px;font-weight:600;white-space:nowrap;font-family:'JetBrains Mono',monospace}
 .c-blue{background:rgba(0,163,224,.15);color:var(--blue)}
@@ -133,6 +142,11 @@ tbody tr.hasflag td:first-child{box-shadow:inset 3px 0 0 var(--red)}
 .sbdot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none;transition:.3s}
 .sbdot.on{background:var(--green);box-shadow:0 0 0 3px rgba(37,193,154,.2)}
 .sbdot.off{background:var(--red);box-shadow:0 0 0 3px rgba(255,77,94,.2)}
+.tpl-group{margin-bottom:16px}
+.tpl-gh{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--blue);font-weight:600;margin:10px 0 8px}
+.tpl-box{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:12.5px;font-family:inherit;resize:vertical;line-height:1.5}
+.tpl-reset{font-size:10px;color:var(--blue);background:rgba(0,163,224,.12);border:1px solid rgba(0,163,224,.3);border-radius:6px;padding:2px 8px}
+.tpl-reset:hover{background:var(--blue);color:#04121c}
 .empty{padding:60px 20px;text-align:center;color:var(--faint)}
 .empty b{display:block;color:var(--txt);font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-bottom:7px}
 
@@ -237,7 +251,7 @@ tbody tr.hasflag td:first-child{box-shadow:inset 3px 0 0 var(--red)}
   <div class="tablewrap">
     <table>
       <thead><tr>
-        <th>Franchisee</th><th>Manager</th><th>Source</th><th>Model</th><th>Stage</th>
+        <th class="freeze freeze-1">Franchisee</th><th class="freeze freeze-2">Manager</th><th>Source</th><th>District</th><th>Model</th><th>Stage</th>
         <th>What to do next</th>
         <th>Token ₹50k</th><th>LOI</th><th>Eligibility</th>
         <th>₹9L · 9-day clock</th><th>Agreement · 3-day</th><th>Full amount · 60-day</th>
@@ -351,6 +365,9 @@ tbody tr.hasflag td:first-child{box-shadow:inset 3px 0 0 var(--red)}
     <div class="fld"><label>CC on all emails (Ajay / NSM)</label><input id="sCc" type="email" placeholder="ajay@safc.ltd"></div>
     <div class="sect-divider">Lead sources (dropdown options)</div>
     <div class="fld"><label>Sources (comma separated)</label><input id="sSources" placeholder="Meta, Google, Instagram, Referral, Website, IVR, Manual, Other"></div>
+    <div class="sect-divider">Message templates (franchisee emails &amp; WhatsApp)</div>
+    <p class="hint" style="margin-bottom:8px">Leave a box empty to use the automatic default. Tags auto-fill: <span class="num" id="tplTags" style="font-size:11px;color:var(--blue)"></span></p>
+    <div id="tplBook"></div>
     <div class="mfoot">
       <button class="btn ghost" id="sCancel">Cancel</button>
       <button class="btn primary" id="sSave">Save settings</button>
@@ -428,6 +445,7 @@ const SB_FIELD_MAP={
   refundDone:'refunddone', refundDate:'refunddate', refundNotified:'refundnotified',
   agreePaidDate:'agreepaiddate', agreementNotified:'agreementnotified',
   agreeDone:'agreedone', agreeDate:'agreedate',
+  agreePayments:'agreepayments', careNotifiedAgree:'carenotifiedagree',
   careNotified:'carenotified',
   payments:'payments', fullPaidDate:'fullpaiddate'
 };
@@ -441,6 +459,9 @@ function recToRow(r){
   }
   row.id=r.id;
   row.payments = Array.isArray(r.payments)?r.payments:[];
+  row.agreepayments = Array.isArray(r.agreePayments)?r.agreePayments:[];
+  // after migration to the single ledger, legacy agreePaidDate is cleared — null it in the DB too
+  if(r.agreePaidDate===undefined) row.agreepaiddate=null;
   return row;
 }
 // DB row (lowercase) -> app record (camelCase)
@@ -451,6 +472,7 @@ function rowToRec(row){
     if(appKey && val!==null && val!==undefined) r[appKey]=val;
   }
   r.payments = Array.isArray(row.payments)?row.payments:[];
+  r.agreePayments = Array.isArray(row.agreepayments)?row.agreepayments:[];
   return r;
 }
 
@@ -488,7 +510,7 @@ async function sbSaveSettings(cfg){
     financename:cfg.financeName||'', financeemail:cfg.financeEmail||'', financephone:cfg.financePhone||'',
     legalname:cfg.legalName||'', legalemail:cfg.legalEmail||'', legalphone:cfg.legalPhone||'',
     carename:cfg.careName||'', careemail:cfg.careEmail||'', carephone:cfg.carePhone||'',
-    ccemail:cfg.ccEmail||'', leadsources:cfg.leadSources||[]
+    ccemail:cfg.ccEmail||'', leadsources:cfg.leadSources||[], templates:cfg.templates||{}
   };
   return sbFetch('/settings?on_conflict=id',{
     method:'POST',
@@ -504,7 +526,7 @@ function settingsRowToCfg(row){
     financeName:row.financename||'', financeEmail:row.financeemail||'', financePhone:row.financephone||'',
     legalName:row.legalname||'', legalEmail:row.legalemail||'', legalPhone:row.legalphone||'',
     careName:row.carename||'', careEmail:row.careemail||'', carePhone:row.carephone||'',
-    ccEmail:row.ccemail||'', leadSources:row.leadsources||[]
+    ccEmail:row.ccemail||'', leadSources:row.leadsources||[], templates:row.templates||{}
   };
 }
 function sbStatus(ok,err){
@@ -528,6 +550,7 @@ const DEFAULTS={
   legalName:'Legal Team', legalEmail:'', legalPhone:'',
   careName:'Arun (Franchisee Care)', careEmail:'', carePhone:'',
   leadSources:['Meta','Google','Instagram','Referral','Website','IVR','Manual','Other'],
+  templates:{},
   ccEmail:''
 };
 const IN_STATES={"Andhra Pradesh":["Alluri Sitharama Raju","Anakapalli","Ananthapuramu","Annamayya","Bapatla","Chittoor","Dr. B.R. Ambedkar Konaseema","East Godavari","Eluru","Guntur","Kakinada","Krishna","Kurnool","Nandyal","NTR","Palnadu","Parvathipuram Manyam","Prakasam","Sri Potti Sriramulu Nellore","Sri Sathya Sai","Srikakulam","Tirupati","Visakhapatnam","Vizianagaram","West Godavari","YSR Kadapa"],"Arunachal Pradesh":["Anjaw","Bichom","Changlang","Dibang Valley","East Kameng","East Siang","Kamle","Keyi Panyor","Kra Daadi","Kurung Kumey","Lepa Rada","Lohit","Longding","Lower Dibang Valley","Lower Siang","Lower Subansiri","Namsai","Pakke-Kessang","Papum Pare","Shi Yomi","Siang","Tawang","Tirap","Upper Siang","Upper Subansiri","West Kameng","West Siang"],"Assam":["Bajali","Baksa","Barpeta","Biswanath","Bongaigaon","Cachar","Charaideo","Chirang","Darrang","Dhemaji","Dhubri","Dibrugarh","Dima Hasao","Goalpara","Golaghat","Hailakandi","Hojai","Jorhat","Kamrup","Kamrup Metropolitan","Karbi Anglong","Karimganj","Kokrajhar","Lakhimpur","Majuli","Morigaon","Nagaon","Nalbari","Sivasagar","Sonitpur","South Salmara-Mankachar","Tinsukia","Udalguri","West Karbi Anglong"],"Bihar":["Araria","Arwal","Aurangabad","Banka","Begusarai","Bhagalpur","Bhojpur","Buxar","Darbhanga","East Champaran","Gaya","Gopalganj","Jamui","Jehanabad","Kaimur","Katihar","Khagaria","Kishanganj","Lakhisarai","Madhepura","Madhubani","Munger","Muzaffarpur","Nalanda","Nawada","Patna","Purnia","Rohtas","Saharsa","Samastipur","Saran","Sheikhpura","Sheohar","Sitamarhi","Siwan","Supaul","Vaishali","West Champaran"],"Chhattisgarh":["Balod","Baloda Bazar","Balrampur","Bastar","Bemetara","Bijapur","Bilaspur","Dantewada","Dhamtari","Durg","Gariaband","Gaurela-Pendra-Marwahi","Janjgir-Champa","Jashpur","Kabirdham","Kanker","Khairagarh-Chhuikhadan-Gandai","Kondagaon","Korba","Koriya","Mahasamund","Manendragarh-Chirmiri-Bharatpur","Mohla-Manpur-Ambagarh Chowki","Mungeli","Narayanpur","Raigarh","Raipur","Rajnandgaon","Sakti","Sarangarh-Bilaigarh","Sukma","Surajpur","Surguja"],"Goa":["North Goa","South Goa"],"Gujarat":["Ahmedabad","Amreli","Anand","Aravalli","Banaskantha","Bharuch","Bhavnagar","Botad","Chhota Udaipur","Dahod","Dang","Devbhoomi Dwarka","Gandhinagar","Gir Somnath","Jamnagar","Junagadh","Kutch","Kheda","Mahisagar","Mehsana","Morbi","Narmada","Navsari","Panchmahal","Patan","Porbandar","Rajkot","Sabarkantha","Surat","Surendranagar","Tapi","Vadodara","Valsad"],"Haryana":["Ambala","Bhiwani","Charkhi Dadri","Faridabad","Fatehabad","Gurugram","Hisar","Jhajjar","Jind","Kaithal","Karnal","Kurukshetra","Mahendragarh","Nuh","Palwal","Panchkula","Panipat","Rewari","Rohtak","Sirsa","Sonipat","Yamunanagar"],"Himachal Pradesh":["Bilaspur","Chamba","Hamirpur","Kangra","Kinnaur","Kullu","Lahaul and Spiti","Mandi","Shimla","Sirmaur","Solan","Una"],"Jharkhand":["Bokaro","Chatra","Deoghar","Dhanbad","Dumka","East Singhbhum","Garhwa","Giridih","Godda","Gumla","Hazaribagh","Jamtara","Khunti","Koderma","Latehar","Lohardaga","Pakur","Palamu","Ramgarh","Ranchi","Sahibganj","Seraikela Kharsawan","Simdega","West Singhbhum"],"Karnataka":["Bagalkot","Ballari","Belagavi","Bengaluru Rural","Bengaluru Urban","Bidar","Chamarajanagar","Chikkaballapur","Chikkamagaluru","Chitradurga","Dakshina Kannada","Davanagere","Dharwad","Gadag","Hassan","Haveri","Kalaburagi","Kodagu","Kolar","Koppal","Mandya","Mysuru","Raichur","Ramanagara","Shivamogga","Tumakuru","Udupi","Uttara Kannada","Vijayanagara","Vijayapura","Yadgir"],"Kerala":["Alappuzha","Ernakulam","Idukki","Kannur","Kasaragod","Kollam","Kottayam","Kozhikode","Malappuram","Palakkad","Pathanamthitta","Thiruvananthapuram","Thrissur","Wayanad"],"Madhya Pradesh":["Agar Malwa","Alirajpur","Anuppur","Ashoknagar","Balaghat","Barwani","Betul","Bhind","Bhopal","Burhanpur","Chhatarpur","Chhindwara","Damoh","Datia","Dewas","Dhar","Dindori","Guna","Gwalior","Harda","Indore","Jabalpur","Jhabua","Katni","Khandwa","Khargone","Mandla","Mandsaur","Morena","Narmadapuram","Narsinghpur","Neemuch","Niwari","Panna","Raisen","Rajgarh","Ratlam","Rewa","Sagar","Satna","Sehore","Seoni","Shahdol","Shajapur","Sheopur","Shivpuri","Sidhi","Singrauli","Tikamgarh","Ujjain","Umaria","Vidisha"],"Maharashtra":["Ahmednagar","Akola","Amravati","Beed","Bhandara","Buldhana","Chandrapur","Chhatrapati Sambhajinagar","Dhule","Gadchiroli","Gondia","Hingoli","Jalgaon","Jalna","Kolhapur","Latur","Mumbai City","Mumbai Suburban","Nagpur","Nanded","Nandurbar","Nashik","Osmanabad","Palghar","Parbhani","Pune","Raigad","Ratnagiri","Sangli","Satara","Sindhudurg","Solapur","Thane","Wardha","Washim","Yavatmal"],"Manipur":["Bishnupur","Chandel","Churachandpur","Imphal East","Imphal West","Jiribam","Kakching","Kamjong","Kangpokpi","Noney","Pherzawl","Senapati","Tamenglong","Tengnoupal","Thoubal","Ukhrul"],"Meghalaya":["East Garo Hills","East Jaintia Hills","East Khasi Hills","Eastern West Khasi Hills","North Garo Hills","Ri Bhoi","South Garo Hills","South West Garo Hills","South West Khasi Hills","West Garo Hills","West Jaintia Hills","West Khasi Hills"],"Mizoram":["Aizawl","Champhai","Hnahthial","Khawzawl","Kolasib","Lawngtlai","Lunglei","Mamit","Saiha","Saitual","Serchhip"],"Nagaland":["Chumoukedima","Dimapur","Kiphire","Kohima","Longleng","Mokokchung","Mon","Niuland","Noklak","Peren","Phek","Shamator","Tseminyu","Tuensang","Wokha","Zunheboto"],"Odisha":["Angul","Balangir","Balasore","Bargarh","Bhadrak","Boudh","Cuttack","Deogarh","Dhenkanal","Gajapati","Ganjam","Jagatsinghpur","Jajpur","Jharsuguda","Kalahandi","Kandhamal","Kendrapara","Kendujhar","Khordha","Koraput","Malkangiri","Mayurbhanj","Nabarangpur","Nayagarh","Nuapada","Puri","Rayagada","Sambalpur","Subarnapur","Sundargarh"],"Punjab":["Amritsar","Barnala","Bathinda","Faridkot","Fatehgarh Sahib","Fazilka","Ferozepur","Gurdaspur","Hoshiarpur","Jalandhar","Kapurthala","Ludhiana","Malerkotla","Mansa","Moga","Pathankot","Patiala","Rupnagar","Sahibzada Ajit Singh Nagar","Sangrur","Shaheed Bhagat Singh Nagar","Sri Muktsar Sahib","Tarn Taran"],"Rajasthan":["Ajmer","Alwar","Balotra","Banswara","Baran","Barmer","Beawar","Bharatpur","Bhilwara","Bikaner","Bundi","Chittorgarh","Churu","Dausa","Deeg","Dholpur","Didwana-Kuchaman","Dungarpur","Ganganagar","Hanumangarh","Jaipur","Jaisalmer","Jalore","Jhalawar","Jhunjhunu","Jodhpur","Karauli","Kekri","Khairthal-Tijara","Kota","Kotputli-Behror","Nagaur","Neem Ka Thana","Pali","Phalodi","Pratapgarh","Rajsamand","Salumbar","Sanchore","Sawai Madhopur","Sikar","Sirohi","Tonk","Udaipur"],"Sikkim":["Gangtok","Gyalshing","Mangan","Namchi","Pakyong","Soreng"],"Tamil Nadu":["Ariyalur","Chengalpattu","Chennai","Coimbatore","Cuddalore","Dharmapuri","Dindigul","Erode","Kallakurichi","Kancheepuram","Kanniyakumari","Karur","Krishnagiri","Madurai","Mayiladuthurai","Nagapattinam","Namakkal","Nilgiris","Perambalur","Pudukkottai","Ramanathapuram","Ranipet","Salem","Sivaganga","Tenkasi","Thanjavur","Theni","Thoothukudi","Tiruchirappalli","Tirunelveli","Tirupathur","Tiruppur","Tiruvallur","Tiruvannamalai","Tiruvarur","Vellore","Viluppuram","Virudhunagar"],"Telangana":["Adilabad","Bhadradri Kothagudem","Hanumakonda","Hyderabad","Jagtial","Jangaon","Jayashankar Bhupalpally","Jogulamba Gadwal","Kamareddy","Karimnagar","Khammam","Komaram Bheem","Mahabubabad","Mahabubnagar","Mancherial","Medak","Medchal-Malkajgiri","Mulugu","Nagarkurnool","Nalgonda","Narayanpet","Nirmal","Nizamabad","Peddapalli","Rajanna Sircilla","Rangareddy","Sangareddy","Siddipet","Suryapet","Vikarabad","Wanaparthy","Warangal","Yadadri Bhuvanagiri"],"Tripura":["Dhalai","Gomati","Khowai","North Tripura","Sepahijala","South Tripura","Unakoti","West Tripura"],"Uttar Pradesh":["Agra","Aligarh","Ambedkar Nagar","Amethi","Amroha","Auraiya","Ayodhya","Azamgarh","Baghpat","Bahraich","Ballia","Balrampur","Banda","Barabanki","Bareilly","Basti","Bhadohi","Bijnor","Budaun","Bulandshahr","Chandauli","Chitrakoot","Deoria","Etah","Etawah","Farrukhabad","Fatehpur","Firozabad","Gautam Buddha Nagar","Ghaziabad","Ghazipur","Gonda","Gorakhpur","Hamirpur","Hapur","Hardoi","Hathras","Jalaun","Jaunpur","Jhansi","Kannauj","Kanpur Dehat","Kanpur Nagar","Kasganj","Kaushambi","Kushinagar","Lakhimpur Kheri","Lalitpur","Lucknow","Maharajganj","Mahoba","Mainpuri","Mathura","Mau","Meerut","Mirzapur","Moradabad","Muzaffarnagar","Pilibhit","Pratapgarh","Prayagraj","Raebareli","Rampur","Saharanpur","Sambhal","Sant Kabir Nagar","Shahjahanpur","Shamli","Shravasti","Siddharthnagar","Sitapur","Sonbhadra","Sultanpur","Unnao","Varanasi"],"Uttarakhand":["Almora","Bageshwar","Chamoli","Champawat","Dehradun","Haridwar","Nainital","Pauri Garhwal","Pithoragarh","Rudraprayag","Tehri Garhwal","Udham Singh Nagar","Uttarkashi"],"West Bengal":["Alipurduar","Bankura","Birbhum","Cooch Behar","Dakshin Dinajpur","Darjeeling","Hooghly","Howrah","Jalpaiguri","Jhargram","Kalimpong","Kolkata","Malda","Murshidabad","Nadia","North 24 Parganas","Paschim Bardhaman","Paschim Medinipur","Purba Bardhaman","Purba Medinipur","Purulia","South 24 Parganas","Uttar Dinajpur"],"Andaman and Nicobar Islands":["Nicobar","North and Middle Andaman","South Andaman"],"Chandigarh":["Chandigarh"],"Dadra and Nagar Haveli and Daman and Diu":["Dadra and Nagar Haveli","Daman","Diu"],"Delhi":["Central Delhi","East Delhi","New Delhi","North Delhi","North East Delhi","North West Delhi","Shahdara","South Delhi","South East Delhi","South West Delhi","West Delhi"],"Jammu and Kashmir":["Anantnag","Bandipora","Baramulla","Budgam","Doda","Ganderbal","Jammu","Kathua","Kishtwar","Kulgam","Kupwara","Poonch","Pulwama","Rajouri","Ramban","Reasi","Samba","Shopian","Srinagar","Udhampur"],"Ladakh":["Kargil","Leh"],"Lakshadweep":["Lakshadweep"],"Puducherry":["Karaikal","Mahe","Puducherry","Yanam"]};
@@ -561,15 +584,56 @@ function totalCost(r){
   const base=r.model==='Master'?CFG.masterCost:CFG.unitCost;
   return base*(1+CFG.gst/100);
 }
+// ---- ONE unified payment ledger ----
+// The token is the first (virtual) entry. r.payments holds every payment after the token.
+// Milestones (agreement ₹9,44,000, full total) are derived from the running total — nothing is capped.
+function ledger(r){
+  // returns array of {amt, date, note, token?} sorted by date, token first
+  const list=[];
+  if(r.tokenDate) list.push({amt:CFG.token, date:r.tokenDate, note:'Token', token:true});
+  // migrate any legacy agreePayments into the single ledger view
+  (r.agreePayments||[]).forEach(p=>list.push({amt:Number(p.amt)||0, date:p.date, note:p.note||''}));
+  (r.payments||[]).forEach(p=>list.push({amt:Number(p.amt)||0, date:p.date, note:p.note||''}));
+  list.sort((a,b)=>{ if(a.token)return -1; if(b.token)return 1; return String(a.date).localeCompare(String(b.date)); });
+  return list;
+}
 function collected(r){
-  let t=0;
-  if(r.tokenDate) t+=CFG.token;
-  if(r.agreePaidDate) t+=(CFG.agreeTotal-CFG.token);
-  (r.payments||[]).forEach(p=>t+=Number(p.amt)||0);
+  let t=ledger(r).reduce((s,p)=>s+(Number(p.amt)||0),0);
+  // legacy: an old agreePaidDate with no ledger entries meant the ₹9,44,000 was in
+  if(r.agreePaidDate && !(r.payments&&r.payments.length) && !(r.agreePayments&&r.agreePayments.length)){
+    t = CFG.agreeTotal + (r.tokenDate?0:0); // token already counted if tokenDate set; agreePaidDate implies full agreement amount
+    if(!r.tokenDate) t=CFG.agreeTotal;
+  }
   if(r.decision==='Rejected'&&r.refundDone) t-=CFG.token;
   return t;
 }
+// Fold any legacy agreement installments into the single payments ledger (idempotent)
+function mergeLegacyLedger(r){
+  const out=[...(r.payments||[])];
+  (r.agreePayments||[]).forEach(p=>{ if(p&&p.amt) out.push({amt:Number(p.amt)||0,date:p.date,note:p.note||''}); });
+  // legacy single agreePaidDate (no installments recorded): represent as one payment of the agreement balance
+  if(r.agreePaidDate && !(r.agreePayments&&r.agreePayments.length) && !(r.payments&&r.payments.length)){
+    out.push({amt:CFG.agreeTotal-CFG.token, date:r.agreePaidDate, note:'Agreement amount (migrated)'});
+  }
+  // clear legacy fields so we don't double count next time
+  r.agreePayments=[];
+  if(r.agreePaidDate) delete r.agreePaidDate;
+  out.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  return out;
+}
 function balance(r){ return Math.max(0,totalCost(r)-collected(r)); }
+
+// Agreement milestone (₹9,44,000) reached?
+function agreeComplete(r){ return collected(r) >= CFG.agreeTotal - 0.5; }
+// Date the running total first crossed ₹9,44,000
+function agreeCompletedDate(r){
+  if(r.agreePaidDate && !(r.payments&&r.payments.length) && !(r.agreePayments&&r.agreePayments.length)) return r.agreePaidDate; // legacy
+  let t=0;
+  for(const p of ledger(r)){ t+=Number(p.amt)||0; if(t>=CFG.agreeTotal-0.5) return p.date; }
+  return null;
+}
+// Amount still needed to reach the agreement milestone (0 if already crossed)
+function agreeRemaining(r){ return Math.max(0, CFG.agreeTotal - collected(r)); }
 
 /* countdown state for a deadline */
 function clock(deadline,doneDate){
@@ -590,25 +654,29 @@ function clock(deadline,doneDate){
 function derive(r){
   const t=parseD(r.tokenDate);
   const d={};
+  const agDone = agreeComplete(r);              // ₹9,44,000 fully collected?
+  const agDate = agreeCompletedDate(r);         // date it was completed
+  d.agreeDone9 = agDone;
+  d.agreeCompletedDate = agDate;
   d.dl9  = t?addDays(t,CFG.win9):null;
-  d.dl60 = t?addDays(t,CFG.win60):null;
   d.dlLoa= t?addDays(t,CFG.winLoa):null;
-  const ap=parseD(r.agreePaidDate);
+  const ap=parseD(agDate);
   d.dl3  = ap?addDays(ap,CFG.win3):null;
+  d.dl60 = ap?addDays(ap,CFG.win60):null;   // 60-day full-amount clock runs from the ₹9,44,000 completion date
   const rj=parseD(r.decisionDate);
   d.dlRef= (r.decision==='Rejected'&&rj)?addDays(rj,CFG.winRefund):null;
 
   d.loa   = d.dlLoa?clock(d.dlLoa,r.loaDone?(r.loaDate||r.tokenDate):null):null;
-  d.nine  = (d.dl9 && r.decision!=='Rejected')?clock(d.dl9,r.agreePaidDate):null;
-  d.three = d.dl3?clock(d.dl3,r.agreeDone?(r.agreeDate||r.agreePaidDate):null):null;
-  d.sixty = (d.dl60 && r.decision!=='Rejected')?clock(d.dl60,balance(r)<=0?(r.fullPaidDate||r.tokenDate):null):null;
+  d.nine  = (d.dl9 && r.decision!=='Rejected')?clock(d.dl9, agDone?agDate:null):null;
+  d.three = d.dl3?clock(d.dl3,r.agreeDone?(r.agreeDate||agDate):null):null;
+  d.sixty = (d.dl60 && r.decision!=='Rejected')?clock(d.dl60,balance(r)<=0?(r.fullPaidDate||agDate):null):null;
   d.refund= d.dlRef?clock(d.dlRef,r.refundDone?(r.refundDate||r.decisionDate):null):null;
 
   // stage
   if(r.decision==='Rejected') d.stage=r.refundDone?'Refund done':'Rejected — refund';
   else if(!r.meetingDone)     d.stage='Token paid';
   else if(!r.decision)        d.stage='Eligibility review';
-  else if(!r.agreePaidDate)   d.stage='Agreement amount due';
+  else if(!agDone)            d.stage='Agreement amount due';
   else if(!r.agreeDone)       d.stage='Agreement pending';
   else if(balance(r)>0)       d.stage='Balance due';
   else                        d.stage='Completed';
@@ -634,10 +702,11 @@ function derive(r){
     d.next = na('Hold the eligibility meeting','go');
   } else if(!r.decision){
     d.next = na("Get the founder's decision (select / reject)",'wait');
-  } else if(!r.agreePaidDate){
+  } else if(!agDone){
     const c=d.nine;
-    d.next = c && c.state==='overdue' ? na('Collect ₹'+(CFG.agreeTotal-CFG.token).toLocaleString('en-IN')+' — overdue','warn')
-           : na('Collect the ₹'+(CFG.agreeTotal-CFG.token).toLocaleString('en-IN')+' balance ('+(c?c.txt:'')+')','go');
+    const rem=agreeRemaining(r);
+    d.next = c && c.state==='overdue' ? na('Collect agreement balance '+inrShort(rem)+' — overdue','warn')
+           : na('Collect agreement balance '+inrShort(rem)+(c?' ('+c.txt+')':''),'go');
   } else if(!r.agreeDone){
     const c=d.three;
     d.next = c && c.state==='overdue' ? na('Hand over the agreement — overdue','warn')
@@ -659,23 +728,82 @@ function waNumber(phone){
   if(p.length===11&&p.startsWith('0')) p='91'+p.slice(1);
   return p.length>=11?p:'';
 }
+// Registry of editable franchisee-facing templates (key -> label + which channel)
+const TEMPLATE_REGISTRY=[
+  {group:'Franchisee WhatsApp', items:[
+    {key:'wa_meeting',      label:'Token paid — schedule eligibility meeting'},
+    {key:'wa_review',       label:'Under review (awaiting founder)'},
+    {key:'wa_approved',     label:'Approved — collect agreement amount'},
+    {key:'wa_agreementdone',label:'Agreement amount complete'},
+    {key:'wa_balance',      label:'Balance due (installments)'},
+    {key:'wa_complete',     label:'Fully paid — welcome'},
+    {key:'wa_rejected',     label:'Rejected — refund'}
+  ]},
+  {group:'Franchisee Email', items:[
+    {key:'email_meeting',      label:'Token paid — schedule eligibility meeting'},
+    {key:'email_review',       label:'Under review (awaiting founder)'},
+    {key:'email_approved',     label:'Approved — collect agreement amount'},
+    {key:'email_agreementdone',label:'Agreement amount complete'},
+    {key:'email_balance',      label:'Balance due (installments)'},
+    {key:'email_complete',     label:'Fully paid — welcome'},
+    {key:'email_rejected',     label:'Rejected — refund'}
+  ]},
+  {group:'Completion announcement', items:[
+    {key:'email_completion', label:'Full-payment announcement email (use {team} for the leader list)'}
+  ]}
+];
+const TEMPLATE_PLACEHOLDERS='{name} {model} {district} {state} {token} {agreement} {agreementremaining} {collected} {balance} {total} {fm} {win9} {win3} {win60} {team}';
+
+/* =========================================================
+function tplContext(r,d){
+  const by=dl=>dl?dl.toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}):'';
+  const rupee=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');
+  const daysLeft = c=> c&&c.left>0 ? c.left : 0;
+  return {
+    name:r.name||'there',
+    model:r.model||'',
+    district:r.district||'',
+    state:r.state||'',
+    token:rupee(CFG.token),
+    agreement:rupee(CFG.agreeTotal),
+    agreementremaining:rupee(agreeRemaining(r)),
+    collected:rupee(collected(r)),
+    balance:rupee(balance(r)),
+    total:rupee(totalCost(r)),
+    fm:r.fm||'',
+    days9: d&&d.nine? (d.nine.left>0? d.nine.left+' day(s)':'') : '',
+    days60: d&&d.sixty? (d.sixty.left>0? d.sixty.left+' day(s)':'') : '',
+    win9:CFG.win9, win3:CFG.win3, win60:CFG.win60,
+    duedate9: d?by(d.dl9):'',
+    duedate60: d?by(d.dl60):''
+  };
+}
+function fillTemplate(str,ctx){
+  return String(str).replace(/\{(\w+)\}/g, (m,k)=> (ctx[k]!==undefined && ctx[k]!==null) ? ctx[k] : m );
+}
+// Resolve a custom template for a key; returns null if none set (so default is used)
+function customTpl(key,r,d){
+  const t = CFG.templates && CFG.templates[key];
+  if(t===undefined || t===null || String(t).trim()==='') return null;
+  return fillTemplate(t, tplContext(r,d));
+}
+
 function waMessage(r,d){
   const name=r.name||'there';
   const daysWord=c=>{ if(!c)return''; if(c.left>0)return' You have '+c.left+' day'+(c.left>1?'s':'')+' left.'; if(c.state==='overdue')return' It is overdue.'; if(c.state==='due')return' It is due today.'; return''; };
-  // build from the concrete next step
   if(r.decision==='Rejected'&&!r.refundDone)
-    return `Hi ${name}, this is regarding your Mr GoliSoda franchise token. Your ₹${CFG.token.toLocaleString('en-IN')} refund is being processed. We'll update you shortly.`;
+    return customTpl('wa_rejected',r,d) || `Hi ${name}, this is regarding your Mr GoliSoda franchise token. Your ₹${CFG.token.toLocaleString('en-IN')} refund is being processed. We'll update you shortly.`;
   if(!r.meetingDone)
-    return `Hi ${name}, thank you for your ₹${CFG.token.toLocaleString('en-IN')} token towards the Mr GoliSoda ${r.model} Franchise. Let's schedule your eligibility meeting. When are you free to connect?`;
+    return customTpl('wa_meeting',r,d) || `Hi ${name}, thank you for your ₹${CFG.token.toLocaleString('en-IN')} token towards the Mr GoliSoda ${r.model} Franchise. Let's schedule your eligibility meeting. When are you free to connect?`;
   if(r.meetingDone&&!r.decision)
-    return `Hi ${name}, your Mr GoliSoda franchise eligibility is under review. We'll confirm the next step very soon.`;
-  if(!r.agreePaidDate)
-    return `Hi ${name}, congratulations — you're approved for the Mr GoliSoda ${r.model} Franchise! To complete the agreement, the balance of ₹${(CFG.agreeTotal-CFG.token).toLocaleString('en-IN')} (total ₹${CFG.agreeTotal.toLocaleString('en-IN')}) is due within ${CFG.win9} days of your token payment.${daysWord(d.nine)}`;
+    return customTpl('wa_review',r,d) || `Hi ${name}, your Mr GoliSoda franchise eligibility is under review. We'll confirm the next step very soon.`;
+  if(!d.agreeDone9)
+    return customTpl('wa_approved',r,d) || `Hi ${name}, congratulations — you're approved for the Mr GoliSoda ${r.model} Franchise! To complete the agreement, please pay the remaining ₹${Math.round(agreeRemaining(r)).toLocaleString('en-IN')} of the ₹${CFG.agreeTotal.toLocaleString('en-IN')} agreement amount (payable in installments). Due within ${CFG.win9} days of your token payment.${daysWord(d.nine)}`;
   if(!r.agreeDone)
-    return `Hi ${name}, we've received your ₹${CFG.agreeTotal.toLocaleString('en-IN')} payment. Your franchise agreement will be handed over within ${CFG.win3} days.`;
+    return customTpl('wa_agreementdone',r,d) || `Hi ${name}, we've received your full ₹${CFG.agreeTotal.toLocaleString('en-IN')} agreement amount — thank you! Your franchise agreement will be handed over within ${CFG.win3} days, and our team will reach out about your onboarding meet.`;
   if(balance(r)>0)
-    return `Hi ${name}, regarding your Mr GoliSoda ${r.model} Franchise — the remaining balance of ₹${Math.round(balance(r)).toLocaleString('en-IN')} is due within ${CFG.win60} days of your token payment.${daysWord(d.sixty)} Please let us know a convenient time to complete it.`;
-  return `Hi ${name}, thank you for completing your Mr GoliSoda ${r.model} Franchise. Welcome aboard!`;
+    return customTpl('wa_balance',r,d) || `Hi ${name}, regarding your Mr GoliSoda ${r.model} Franchise — the remaining balance of ₹${Math.round(balance(r)).toLocaleString('en-IN')} is due within ${CFG.win60} days of your agreement amount payment.${daysWord(d.sixty)} Please let us know a convenient time to complete it.`;
+  return customTpl('wa_complete',r,d) || `Hi ${name}, thank you for completing your Mr GoliSoda ${r.model} Franchise. Welcome aboard!`;
 }
 function waOpen(r){
   const num=waNumber(r.phone);
@@ -689,35 +817,35 @@ function emailSubject(r,d){
   if(r.decision==='Rejected'&&!r.refundDone) return 'Mr GoliSoda Franchise — Update on your token';
   if(!r.meetingDone) return 'Welcome aboard — Next step for your Mr GoliSoda '+r.model+' Franchise';
   if(r.meetingDone&&!r.decision) return 'Mr GoliSoda '+r.model+' Franchise — Your application is progressing';
-  if(!r.agreePaidDate) return 'Congratulations! You\u2019re approved for the Mr GoliSoda '+r.model+' Franchise';
-  if(!r.agreeDone) return 'Payment received — Your Mr GoliSoda Franchise agreement is on the way';
+  if(!d.agreeDone9) return 'Congratulations! You\u2019re approved for the Mr GoliSoda '+r.model+' Franchise';
+  if(!r.agreeDone) return 'Payment complete — Your agreement & onboarding meet';
   if(balance(r)>0) return 'One final step to complete your Mr GoliSoda '+r.model+' Franchise';
   return 'Welcome to the Mr GoliSoda Family! 🎉';
 }
 function emailBody(r,d){
   const nm=r.name||'there';
-  const sign='\n\nWith warm regards,\nTeam Mr GoliSoda\nSouth Asian Foods Corporation';
+  const sign='';
   const by=dl=>dl?dl.toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}):'';
 
   if(r.decision==='Rejected'&&!r.refundDone)
-    return `Dear ${nm},\n\nThank you sincerely for your interest in partnering with Mr GoliSoda and for the time you invested in the process.\n\nAfter careful consideration, we are unable to move forward on this occasion. Please know this reflects our current requirements and takes nothing away from our appreciation of your enthusiasm.\n\nYour token amount of ₹${CFG.token.toLocaleString('en-IN')} is being refunded in full and will reach you shortly. We would be glad to stay in touch for future opportunities.\n\nWishing you continued success.${sign}`;
+    return customTpl('email_rejected',r,d) || `Dear ${nm},\n\nThank you sincerely for your interest in partnering with Mr GoliSoda and for the time you invested in the process.\n\nAfter careful consideration, we are unable to move forward on this occasion. Please know this reflects our current requirements and takes nothing away from our appreciation of your enthusiasm.\n\nYour token amount of ₹${CFG.token.toLocaleString('en-IN')} is being refunded in full and will reach you shortly. We would be glad to stay in touch for future opportunities.\n\nWishing you continued success.${sign}`;
 
   if(!r.meetingDone)
-    return `Dear ${nm},\n\nWelcome to the Mr GoliSoda family, and thank you for your ₹${CFG.token.toLocaleString('en-IN')} token towards the ${r.model} Franchise — we're delighted to have you begin this journey with us.\n\nThe next step is a short eligibility discussion, where we'll walk you through the opportunity and answer any questions you may have. Kindly let us know a time that suits you, and we'll arrange it right away.\n\nWe look forward to speaking with you soon.${sign}`;
+    return customTpl('email_meeting',r,d) || `Dear ${nm},\n\nWelcome to the Mr GoliSoda family, and thank you for your ₹${CFG.token.toLocaleString('en-IN')} token towards the ${r.model} Franchise — we're delighted to have you begin this journey with us.\n\nThe next step is a short eligibility discussion, where we'll walk you through the opportunity and answer any questions you may have. Kindly let us know a time that suits you, and we'll arrange it right away.\n\nWe look forward to speaking with you soon.${sign}`;
 
   if(r.meetingDone&&!r.decision)
-    return `Dear ${nm},\n\nThank you for taking the time to meet with us — it was a pleasure getting to know you and understanding your vision for the Mr GoliSoda ${r.model} Franchise.\n\nYour application is now with our founder for final review. We will be in touch very shortly with the outcome and the next step. We appreciate your patience and enthusiasm.${sign}`;
+    return customTpl('email_review',r,d) || `Dear ${nm},\n\nThank you for taking the time to meet with us — it was a pleasure getting to know you and understanding your vision for the Mr GoliSoda ${r.model} Franchise.\n\nYour application is now with our founder for final review. We will be in touch very shortly with the outcome and the next step. We appreciate your patience and enthusiasm.${sign}`;
 
-  if(!r.agreePaidDate)
-    return `Dear ${nm},\n\nWonderful news — congratulations! You have been approved for the Mr GoliSoda ${r.model} Franchise. We're thrilled to welcome you as our partner.\n\nTo move forward and secure your franchise, the next step is to complete the agreement amount. The balance of ₹${(CFG.agreeTotal-CFG.token).toLocaleString('en-IN')} is now due, bringing the total agreement amount to ₹${CFG.agreeTotal.toLocaleString('en-IN')} (inclusive of your token)${d.dl9?', kindly to be completed by '+by(d.dl9):''}.${d.nine&&d.nine.left>0?` You have ${d.nine.left} day(s) in hand — we'd be happy to assist you in completing this at your convenience.`:d.nine&&d.nine.state==='overdue'?` We'd be grateful if this could be completed at the earliest so we can proceed without delay.`:''}\n\nOnce received, we'll promptly move ahead with your franchise agreement. You're just one step away!${sign}`;
+  if(!d.agreeDone9)
+    return customTpl('email_approved',r,d) || `Dear ${nm},\n\nWonderful news — congratulations! You have been approved for the Mr GoliSoda ${r.model} Franchise. We're thrilled to welcome you as our partner.\n\nTo move forward and secure your franchise, the next step is to complete the agreement amount of ₹${CFG.agreeTotal.toLocaleString('en-IN')} (inclusive of your token). The remaining ₹${Math.round(agreeRemaining(r)).toLocaleString('en-IN')} may be paid in one or more installments${d.dl9?', kindly to be completed by '+by(d.dl9):''}.${d.nine&&d.nine.left>0?` You have ${d.nine.left} day(s) in hand — we'd be happy to assist you at your convenience.`:d.nine&&d.nine.state==='overdue'?` We'd be grateful if this could be completed at the earliest so we can proceed without delay.`:''}\n\nOnce fully received, we'll promptly move ahead with your franchise agreement.${sign}`;
 
   if(!r.agreeDone)
-    return `Dear ${nm},\n\nThank you — we're pleased to confirm that we have received your payment of ₹${CFG.agreeTotal.toLocaleString('en-IN')}. Congratulations on completing this important milestone!\n\nYour franchise agreement is now being prepared and will be shared with you within ${CFG.win3} days. You're almost there, and we couldn't be more excited to have you on board.${sign}`;
+    return customTpl('email_agreementdone',r,d) || `Dear ${nm},\n\nThank you — we're pleased to confirm that we have received your full agreement amount of ₹${CFG.agreeTotal.toLocaleString('en-IN')}. Congratulations on completing this important milestone!\n\nTwo things are now underway:\n1. Your franchise agreement is being prepared and will be shared with you within ${CFG.win3} days.\n2. Our Franchisee Care team will connect with you shortly to schedule your onboarding meet.\n\nCould you please share a couple of convenient time slots for the onboarding meet? We're excited to have you on board.${sign}`;
 
   if(balance(r)>0)
-    return `Dear ${nm},\n\nYou're on the final stretch of your Mr GoliSoda ${r.model} Franchise journey, and we're delighted to have you with us.\n\nTo complete the process, the remaining balance of ₹${Math.round(balance(r)).toLocaleString('en-IN')} is due${d.dl60?' by '+by(d.dl60):''}. Once this is settled, everything will be in place for your franchise to move ahead. Please let us know a convenient time, and we'll be glad to support you through it.\n\nThank you for your trust in Mr GoliSoda.${sign}`;
+    return customTpl('email_balance',r,d) || `Dear ${nm},\n\nYou're on the final stretch of your Mr GoliSoda ${r.model} Franchise journey, and we're delighted to have you with us.\n\nTo complete the process, the remaining balance of ₹${Math.round(balance(r)).toLocaleString('en-IN')} is due${d.dl60?' by '+by(d.dl60):''}. Once this is settled, everything will be in place for your franchise to move ahead. Please let us know a convenient time, and we'll be glad to support you through it.\n\nThank you for your trust in Mr GoliSoda.${sign}`;
 
-  return `Dear ${nm},\n\nCongratulations, and a very warm welcome to the Mr GoliSoda family! 🎉\n\nYour onboarding for the ${r.model} Franchise is now complete — every step done, every formality in place. It's been a genuine pleasure guiding you here, and we're excited for the road ahead.\n\nOur team will stay closely in touch to support your success at every stage. Here's to a thriving partnership!${sign}`;
+  return customTpl('email_complete',r,d) || `Dear ${nm},\n\nCongratulations, and a very warm welcome to the Mr GoliSoda family! 🎉\n\nYour onboarding for the ${r.model} Franchise is now complete — every step done, every formality in place. It's been a genuine pleasure guiding you here, and we're excited for the road ahead.\n\nOur team will stay closely in touch to support your success at every stage. Here's to a thriving partnership!${sign}`;
 }
 function mailto(to,subject,body,cc){
   // Opens your default mail app (set GoDaddy webmail / Outlook / Apple Mail as default) with everything pre-filled.
@@ -726,10 +854,61 @@ function mailto(to,subject,body,cc){
   if(cc) url+='&cc='+encodeURIComponent(cc);
   window.location.href=url;
 }
+// CC list for a given franchisee: always Ajay (NBDM) + that franchisee's FM email
+function ccFor(r){
+  const list=[];
+  if(CFG.ccEmail) list.push(CFG.ccEmail);
+  const fe=r&&r.fm?fmEmail(r.fm):'';
+  if(fe && !list.includes(fe)) list.push(fe);
+  return list.join(',');
+}
+// Full CC for the completion email: every configured team + Ajay + the FM
+const ANNOUNCE_TEAM=[
+  {name:'Siva',    role:'Operation Head',                                    email:'operationhead@safc.ltd'},
+  {name:'Dhanush', role:'Franchise Finance',                                 email:'finance1@safc.ltd'},
+  {name:'Thulasi', role:'National Sales Manager (NSM)',                      email:'nationalsalesmanager@safc.ltd'},
+  {name:'Arun',    role:'Franchise Care',                                    email:'customersuccess@safc.ltd'},
+  {name:'Yogaraj', role:'National Launch Manager \u2014 will launch your market', email:'nationallaunchmanager@safc.ltd'}
+];
+// Departments CC'd for their own action (roles NOT named in the body)
+const ANNOUNCE_CC_ONLY=['legal@safc.ltd','training@safc.ltd','hr.recruit@safc.ltd','finance@safc.ltd','nationalbdm@safc.ltd'];
+function ccAllTeams(r){
+  const list=[];
+  const add=e=>{ if(e && !list.includes(e)) list.push(e); };
+  ANNOUNCE_TEAM.forEach(t=>add(t.email));      // 5 named heads
+  ANNOUNCE_CC_ONLY.forEach(e=>add(e));         // 5 CC-only departments
+  add(CFG.ccEmail);                            // Ajay / NBDM (from Settings)
+  add(r&&r.fm?fmEmail(r.fm):'');               // this franchisee's FM
+  return list.join(',');
+}
+function completionSubject(r){ return '\ud83c\udf89 Welcome to the Mr GoliSoda Family \u2014 '+r.name+' ('+r.model+' Franchise)'; }
+function completionBody(r){
+  const nm=r.name||'there';
+  const team=ANNOUNCE_TEAM.map(t=>`\u2022 ${t.name} \u2014 ${t.role}\n   ${t.email}`).join('\n');
+  // custom template support — {team} inserts the leader list
+  const custom = CFG.templates && CFG.templates.email_completion;
+  if(custom && String(custom).trim()!==''){
+    const ctx=tplContext(r,null); ctx.team=team;
+    return fillTemplate(custom, ctx);
+  }
+  return `Dear ${nm},\n\n`+
+`Congratulations, and a very warm welcome to the Mr GoliSoda family! \ud83c\udf89\n\n`+
+`We're delighted to confirm that your full payment for the ${r.model} Franchise${r.district?' ('+r.district+')':''} is now complete. Thank you for placing your trust in us \u2014 we wish you tremendous success and are honoured to have you as our partner.\n\n`+
+`This is a proud moment, and we're pleased to announce \u2014 to you and to our entire team \u2014 the launch of your franchise journey with Mr GoliSoda.\n\n`+
+`The following leaders will be closely involved in bringing your franchise to life, and they are all copied on this email so you always know exactly who to reach:\n\n`+
+team+`\n\n`+
+`Together with your Franchise Manager${r.fm?' ('+r.fm+')':''}, this team will guide you through onboarding, agreement, finance, and the launch of your market. Our Franchisee Care team will connect with you shortly to schedule your onboarding meet.\n\n`+
+`If you have any questions at any stage, simply reply to this email and the right person will assist you.\n\n`+
+`Once again \u2014 congratulations, welcome aboard, and here's to a successful and thriving partnership! We wish you all the very best.`;
+}
+function sendCompletionEmail(r){
+  if(!r.email){ toast('No franchisee email saved — add it in Record details first.'); return; }
+  mailto(r.email, completionSubject(r), completionBody(r), ccAllTeams(r));
+}
 function emailOpen(r){
   if(!r.email){ toast('No email saved for '+r.name+'.'); return; }
   const d=derive(r);
-  mailto(r.email,emailSubject(r,d),emailBody(r,d),CFG.ccEmail);
+  mailto(r.email,emailSubject(r,d),emailBody(r,d),ccFor(r));
 }
 
 /* ---- Internal inter-department hand-offs (Finance = LOI/refund, Legal = Agreement, Care = onboarding) ---- */
@@ -770,6 +949,44 @@ function careBody(r){
 `Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
 `Franchise mgr  : ${r.fm||'—'}${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}\n\n`+
 `Kindly initiate onboarding and stay in touch with the franchisee. Thanks.`;
+}
+// Care notification specifically at agreement-complete: schedule the onboarding meet
+function careMeetSubject(r){ return 'Onboarding meet: Schedule — '+r.name+' ('+r.model+' Franchise, '+(r.district||'district TBD')+')'; }
+function careMeetBody(r){
+  return `Hi ${CFG.careName||'Franchisee Care'},\n\n`+
+`${r.name} has completed the ₹${CFG.agreeTotal.toLocaleString('en-IN')} agreement amount. Please connect with them to schedule the onboarding meet.\n\n`+
+`Franchisee     : ${r.name}\n`+
+`Contact number : ${r.phone||'—'}\n`+
+`Email          : ${r.email||'—'}\n`+
+`Franchise model: ${r.model}\n`+
+`Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
+`Franchise mgr  : ${r.fm||'—'}${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}\n\n`+
+`Please reach out and fix a convenient time for the onboarding meet. Thanks.`;
+}
+// Message to the franchisee at agreement-complete: agreement coming + onboarding meet
+function custAgreeSubject(r){ return 'Mr GoliSoda '+r.model+' Franchise — Agreement & onboarding meet'; }
+function custAgreeBody(r){
+  const nm=r.name||'there';
+  return `Dear ${nm},\n\nThank you — your full agreement amount of ₹${CFG.agreeTotal.toLocaleString('en-IN')} is received. Congratulations!\n\nTwo things are now in progress:\n1. Your franchise agreement is being prepared and will be shared with you within ${CFG.win3} days.\n2. Our Franchisee Care team will connect with you to arrange your onboarding meet.\n\nCould you please share a couple of convenient time slots for the onboarding meet? We look forward to getting you started.`;
+}
+function custAgreeWaText(r){
+  const nm=r.name||'there';
+  return `Hi ${nm}, your full ₹${CFG.agreeTotal.toLocaleString('en-IN')} agreement amount is received — congratulations! Your agreement will be shared within ${CFG.win3} days, and our team will connect for your onboarding meet. Could you share a couple of convenient time slots?`;
+}
+function notifyCareMeetEmail(r){ mailto(CFG.careEmail,careMeetSubject(r),careMeetBody(r),ccFor(r)); }
+function notifyCareMeetWa(r){
+  const num=waNumber(CFG.carePhone);
+  if(!num){ toast('Add the Franchisee Care WhatsApp number in Settings first.'); return; }
+  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(careMeetBody(r)),'_blank');
+}
+function custAgreeEmail(r){
+  if(!r.email){ toast('No email saved for '+r.name+'.'); return; }
+  mailto(r.email,custAgreeSubject(r),custAgreeBody(r),ccFor(r));
+}
+function custAgreeWa(r){
+  const num=waNumber(r.phone);
+  if(!num){ toast('No valid WhatsApp number for '+r.name+'.'); return; }
+  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(custAgreeWaText(r)),'_blank');
 }
 function agreementSubject(r){ return 'Action: Prepare Agreement — '+r.name+' ('+r.model+' Franchise, '+(r.district||'district TBD')+')'; }
 function agreementBody(r){
@@ -813,28 +1030,28 @@ function escalateFmEmail(r){
   const d=derive(r);
   const to=fmEmail(r.fm);
   if(!to){ toast('Add '+(r.fm||'this manager')+"'s email in Settings first."); return; }
-  mailto(to,'Escalation: '+r.name+' — '+(d.flags[0]||'overdue'),escalationText(r,d),CFG.ccEmail);
+  mailto(to,'Escalation: '+r.name+' — '+(d.flags[0]||'overdue'),escalationText(r,d),ccFor(r));
 }
 
-function notifyFinanceEmail(r){ mailto(CFG.financeEmail,loaSubject(r),loaBody(r),CFG.ccEmail); }
+function notifyFinanceEmail(r){ mailto(CFG.financeEmail,loaSubject(r),loaBody(r),ccFor(r)); }
 function notifyFinanceWa(r){
   const num=waNumber(CFG.financePhone);
   if(!num){ toast('Add the Finance WhatsApp number in Settings first.'); return; }
   window.open('https://wa.me/'+num+'?text='+encodeURIComponent(loaBody(r)),'_blank');
 }
-function notifyLegalEmail(r){ mailto(CFG.legalEmail,agreementSubject(r),agreementBody(r),CFG.ccEmail); }
+function notifyLegalEmail(r){ mailto(CFG.legalEmail,agreementSubject(r),agreementBody(r),ccFor(r)); }
 function notifyLegalWa(r){
   const num=waNumber(CFG.legalPhone);
   if(!num){ toast('Add the Legal WhatsApp number in Settings first.'); return; }
   window.open('https://wa.me/'+num+'?text='+encodeURIComponent(agreementBody(r)),'_blank');
 }
-function notifyRefundEmail(r){ mailto(CFG.financeEmail,refundSubject(r),refundBody(r),CFG.ccEmail); }
+function notifyRefundEmail(r){ mailto(CFG.financeEmail,refundSubject(r),refundBody(r),ccFor(r)); }
 function notifyRefundWa(r){
   const num=waNumber(CFG.financePhone);
   if(!num){ toast('Add the Finance WhatsApp number in Settings first.'); return; }
   window.open('https://wa.me/'+num+'?text='+encodeURIComponent(refundBody(r)),'_blank');
 }
-function notifyCareEmail(r){ mailto(CFG.careEmail,careSubject(r),careBody(r),CFG.ccEmail); }
+function notifyCareEmail(r){ mailto(CFG.careEmail,careSubject(r),careBody(r),ccFor(r)); }
 function notifyCareWa(r){
   const num=waNumber(CFG.carePhone);
   if(!num){ toast('Add the Franchisee Care WhatsApp number in Settings first.'); return; }
@@ -918,13 +1135,14 @@ function renderTable(){
     const loa = r.loaDone?'<span class="chip c-green">Issued</span>':chip(d.loa);
     const stageCls = d.stage==='Completed'?'c-green':d.stage.startsWith('Rejected')?'c-red':d.stage==='Refund done'?'c-grey':'c-blue';
     return `<tr data-open="${r.id}" class="${d.flags.length?'hasflag':''}">
-      <td><div class="nmcell">${esc(r.name)}<small>${esc(r.phone||'no number')}</small></div>
+      <td class="freeze freeze-1"><div class="nmcell">${esc(r.name)}<small>${esc(r.phone||'no number')}</small></div>
         <div class="rowbtns">
         ${waNumber(r.phone)?`<button class="wabtn" data-wa="${r.id}" title="WhatsApp reminder">WhatsApp</button>`:''}
         ${r.email?`<button class="mailbtn" data-mail="${r.id}" title="Email reminder">Email</button>`:''}
         </div></td>
-      <td style="color:var(--dim)">${esc(r.fm||'—')}</td>
+      <td class="freeze freeze-2" style="color:var(--dim)">${esc(r.fm||'—')}</td>
       <td>${r.source?`<span class="chip c-grey">${esc(r.source)}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
+      <td style="color:var(--dim)">${r.district?esc(r.district):'<span style="color:var(--faint)">—</span>'}</td>
       <td><span class="pill ${r.model==='Master'?'master':'unit'}">${r.model}</span></td>
       <td><span class="chip ${stageCls}">${d.stage}</span></td>
       <td><span class="next next-${d.next.tone}">${esc(d.next.txt)}</span></td>
@@ -1042,54 +1260,83 @@ function renderDrawer(){
     </div>
   </div>`:`
   <div class="sect">
-    <h4>Step 3 — Agreement amount ₹${(CFG.agreeTotal).toLocaleString('en-IN')} · ${CFG.win9}-day clock</h4>
+    <h4>Payments — one ledger for everything</h4>
     <div class="step">
-      <div class="sh"><span><span class="st">Balance of agreement amount</span><span class="sd">₹${(CFG.agreeTotal-CFG.token).toLocaleString('en-IN')} on top of the token</span></span></div>
-      <div class="fld"><label>₹${(CFG.agreeTotal-CFG.token).toLocaleString('en-IN')} received on</label><input type="date" data-f="agreePaidDate" value="${r.agreePaidDate||''}"></div>
-      <div class="deadline"><span>Due by ${d.dl9?d.dl9.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}):'—'}</span>${chip(d.nine)}</div>
+      <div class="sh"><span><span class="st">Total collected</span><span class="sd">Token counts as the first payment</span></span><span class="money" style="color:var(--green)">${inr(collected(r))}</span></div>
+      <div class="deadline"><span>Total franchise cost</span><span class="money">${inr(totalCost(r))}</span></div>
+      <div class="deadline"><span>Balance remaining</span><span class="money bal">${inr(balance(r))}</span></div>
+
+      <!-- milestone bar -->
+      <div style="margin:14px 0 6px">
+        <div style="height:8px;border-radius:5px;background:var(--bg);overflow:hidden;position:relative">
+          <div style="height:100%;width:${Math.min(100,collected(r)/totalCost(r)*100).toFixed(1)}%;background:linear-gradient(90deg,var(--blue),var(--green))"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--faint);margin-top:6px">
+          <span>${(collected(r)/totalCost(r)*100).toFixed(0)}% paid</span>
+          <span>Agreement ₹${CFG.agreeTotal.toLocaleString('en-IN')}: ${agreeComplete(r)?'<b style="color:var(--green)">✓ crossed</b>':('<b style="color:var(--amber)">₹'+Math.round(agreeRemaining(r)).toLocaleString('en-IN')+' to go</b>')}</span>
+        </div>
+      </div>
+
+      <!-- milestone clocks -->
+      <div class="deadline"><span>Agreement amount (₹${CFG.agreeTotal.toLocaleString('en-IN')}) · ${CFG.win9}-day clock</span>${agreeComplete(r)?('<span class="chip c-green">Done '+fmtD(d.agreeCompletedDate)+'</span>'):chip(d.nine)}</div>
+      <div class="deadline"><span>Full amount · ${CFG.win60}-day clock ${agreeComplete(r)?'(from ₹'+CFG.agreeTotal.toLocaleString('en-IN')+' crossing)':'(starts once agreement crossed)'}</span>${chip(d.sixty)}</div>
+
+      <!-- full ledger -->
+      <ul class="paylist" style="margin-top:12px">
+        ${ledger(r).map((p,idx)=>{
+          const cum=ledger(r).slice(0,idx+1).reduce((s,x)=>s+(Number(x.amt)||0),0);
+          const crossed = cum>=CFG.agreeTotal-0.5 && (cum-(Number(p.amt)||0))<CFG.agreeTotal-0.5;
+          return `<li><span>${fmtD(p.date)} ${p.token?'· <b>Token</b>':(p.note?'· '+esc(p.note):'')}${crossed?' <span class="chip c-green" style="font-size:9px;padding:1px 6px">agreement crossed</span>':''}</span><span><span class="money">${inr(p.amt)}</span>${p.token?'':` <button data-pdel="${idx}">×</button>`}</span></li>`;
+        }).join('')}
+      </ul>
+
+      <!-- single entry box (never capped) -->
+      <div class="grid2" style="margin-top:12px">
+        <div class="fld"><label>Payment amount</label><input class="num" id="pAmt" type="number" placeholder="0"></div>
+        <div class="fld"><label>Received on</label><input type="date" id="pDate"></div>
+      </div>
+      <div class="fld"><label>Note (what / which installment)</label><input id="pNote" placeholder="e.g. 1st installment, machinery, etc."></div>
+      <button class="btn primary" id="pAdd" style="width:100%">Record payment</button>
     </div>
-    ${r.agreePaidDate?`
+
+    <!-- Agreement handover (manual tick) -->
+    <div class="step" style="margin-top:10px">
+      <label class="chk"><input type="checkbox" data-f="agreeDone" ${r.agreeDone?'checked':''}> Agreement handed over to franchisee</label>
+      ${r.agreeDone?`<div class="fld" style="margin-top:9px"><label>Handed over on</label><input type="date" data-f="agreeDate" value="${r.agreeDate||''}"></div>`:''}
+      <div class="deadline"><span>Within ${CFG.win3} days of the ₹${CFG.agreeTotal.toLocaleString('en-IN')} crossing</span>${chip(d.three)}</div>
+    </div>
+
+    <!-- Notifications when agreement amount crossed -->
+    ${agreeComplete(r)?`
     <div class="step handoff">
-      <div class="sh"><span class="st">Internal — ask Legal to prepare the agreement</span>${r.agreementNotified?'<span class="chip c-green">Notified</span>':'<span class="chip c-amber">Not sent</span>'}</div>
-      <div class="sd">Sends ${esc(r.name)}'s details plus the franchise manager's contact to ${esc(CFG.legalName||'Legal')}.</div>
-      <div class="handoff-btns">
+      <div class="sh"><span class="st">Agreement amount crossed — notify Legal, Care &amp; franchisee</span></div>
+      <div class="handoff-btns" style="margin-top:6px">
+        <span style="font-size:11px;color:var(--faint);width:100%">Legal — prepare agreement:</span>
         <button class="mailbtn" id="legMail">Email Legal</button>
         <button class="wabtn" id="legWa" style="margin-top:0">WhatsApp Legal</button>
         <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="agreementNotified" ${r.agreementNotified?'checked':''}> Sent</label>
       </div>
-    </div>`:''}
-  </div>
-
-  <div class="sect">
-    <h4>Step 4 — Agreement handover · ${CFG.win3}-day clock</h4>
-    <div class="step">
-      <label class="chk"><input type="checkbox" data-f="agreeDone" ${r.agreeDone?'checked':''}> Agreement handed over</label>
-      ${r.agreeDone?`<div class="fld" style="margin-top:9px"><label>Handed over on</label><input type="date" data-f="agreeDate" value="${r.agreeDate||''}"></div>`:''}
-      <div class="deadline"><span>Within ${CFG.win3} days of the ₹${CFG.agreeTotal.toLocaleString('en-IN')} payment</span>${chip(d.three)}</div>
-    </div>
-  </div>
-
-  <div class="sect">
-    <h4>Step 5 — Full amount · ${CFG.win60}-day clock</h4>
-    <div class="step">
-      <div class="deadline"><span>Due by ${d.dl60?d.dl60.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}):'—'}</span>${chip(d.sixty)}</div>
-      <ul class="paylist" style="margin-top:10px">
-        ${payments.length?payments.map((p,i)=>`<li><span>${fmtD(p.date)} ${p.note?'· '+esc(p.note):''}</span><span><span class="money">${inr(p.amt)}</span> <button data-del="${i}">×</button></span></li>`).join(''):'<li style="color:var(--faint);border:none">No balance instalments recorded yet.</li>'}
-      </ul>
-      <div class="grid2" style="margin-top:12px">
-        <div class="fld"><label>Amount</label><input class="num" id="pAmt" type="number" placeholder="0"></div>
-        <div class="fld"><label>Received on</label><input type="date" id="pDate"></div>
+      <div class="handoff-btns" style="margin-top:8px">
+        <span style="font-size:11px;color:var(--faint);width:100%">Franchisee Care — onboarding meet:</span>
+        <button class="mailbtn" id="careMailA">Email Care</button>
+        <button class="wabtn" id="careWaA" style="margin-top:0">WhatsApp Care</button>
+        <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="careNotifiedAgree" ${r.careNotifiedAgree?'checked':''}> Sent</label>
       </div>
-      <div class="fld"><label>Note</label><input id="pNote" placeholder="e.g. machinery instalment"></div>
-      <button class="btn primary" id="pAdd" style="width:100%">Record payment</button>
-    </div>
+      <div class="handoff-btns" style="margin-top:8px">
+        <span style="font-size:11px;color:var(--faint);width:100%">Franchisee — agreement &amp; onboarding meet:</span>
+        ${r.email?`<button class="mailbtn" id="custAgreeMail">Email Franchisee</button>`:'<span style="font-size:11px;color:var(--faint)">No email saved</span>'}
+        ${waNumber(r.phone)?`<button class="wabtn" id="custAgreeWa" style="margin-top:0">WhatsApp Franchisee</button>`:''}
+      </div>
+    </div>`:''}
+
+    <!-- Full payment complete: one congratulatory email to franchisee, all teams in CC -->
     ${balance(r)<=0?`
-    <div class="step handoff" style="border-color:rgba(37,193,154,.3);background:linear-gradient(180deg,rgba(37,193,154,.06),transparent)">
-      <div class="sh"><span class="st">Internal — hand over to Franchisee Care for onboarding</span>${r.careNotified?'<span class="chip c-green">Notified</span>':'<span class="chip c-amber">Not sent</span>'}</div>
-      <div class="sd">Full payment complete. Notify ${esc(CFG.careName||'Franchisee Care')} to begin onboarding, with ${esc(r.name)}'s full details.</div>
-      <div class="handoff-btns">
-        <button class="mailbtn" id="careMail">Email Care</button>
-        <button class="wabtn" id="careWa" style="margin-top:0">WhatsApp Care</button>
+    <div class="step handoff" style="border-color:rgba(37,193,154,.35);background:linear-gradient(180deg,rgba(37,193,154,.08),transparent)">
+      <div class="sh"><span class="st">🎉 Fully paid — send the welcome &amp; completion email</span>${r.careNotified?'<span class="chip c-green">Sent</span>':'<span class="chip c-amber">Not sent</span>'}</div>
+      <div class="sd">One email to <b>${esc(r.name)}</b> congratulating them, introducing the teams handling their processes — with Finance, Legal, Care (${esc(CFG.careName||'Arun')}), Ajay &amp; the FM all in CC.</div>
+      <div class="handoff-btns" style="margin-top:10px">
+        ${r.email?`<button class="mailbtn" id="completionMail">Send completion email</button>`:'<span style="font-size:11px;color:var(--red)">Add the franchisee email in Record details first.</span>'}
+        ${waNumber(r.phone)?`<button class="wabtn" id="careWa" style="margin-top:0">WhatsApp Care (optional)</button>`:''}
         <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="careNotified" ${r.careNotified?'checked':''}> Sent</label>
       </div>
     </div>`:''}
@@ -1245,19 +1492,34 @@ document.getElementById('dBody').addEventListener('click',async e=>{
   if(e.target.id==='refMail'){ if(!CFG.financeEmail){toast('Add the Finance email in Settings first.');return;} notifyRefundEmail(r); return; }
   if(e.target.id==='refWa'){ notifyRefundWa(r); return; }
   if(e.target.id==='careMail'){ if(!CFG.careEmail){toast('Add the Franchisee Care email in Settings first.');return;} notifyCareEmail(r); return; }
+  if(e.target.id==='completionMail'){ sendCompletionEmail(r); return; }
   if(e.target.id==='careWa'){ notifyCareWa(r); return; }
+  if(e.target.id==='careMailA'){ if(!CFG.careEmail){toast('Add the Franchisee Care email in Settings first.');return;} notifyCareMeetEmail(r); return; }
+  if(e.target.id==='careWaA'){ notifyCareMeetWa(r); return; }
+  if(e.target.id==='custAgreeMail'){ custAgreeEmail(r); return; }
+  if(e.target.id==='custAgreeWa'){ custAgreeWa(r); return; }
   if(e.target.id==='pAdd'){
     const amt=Number(document.getElementById('pAmt').value);
     const date=document.getElementById('pDate').value;
     if(!amt||!date) return toast('Enter both an amount and a date.');
-    r.payments=r.payments||[];
+    if(amt<=0) return toast('Enter a valid amount.');
+    // migrate any legacy agreement installments into the single ledger, then add
+    r.payments = mergeLegacyLedger(r);
     r.payments.push({amt,date,note:document.getElementById('pNote').value});
-    r.payments.sort((a,b)=>a.date.localeCompare(b.date));
+    r.payments.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
     if(balance(r)<=0&&!r.fullPaidDate) r.fullPaidDate=date;
+    if(balance(r)>0) r.fullPaidDate=null;
     await saveOne(r); renderAll(); toast('Payment recorded.');
   }
-  if(e.target.dataset.del!==undefined){
-    r.payments.splice(Number(e.target.dataset.del),1);
+  if(e.target.dataset.pdel!==undefined){
+    // ledger index includes the token at position 0; map back to r.payments
+    r.payments = mergeLegacyLedger(r);
+    const led=ledger(r);
+    const target=led[Number(e.target.dataset.pdel)];
+    if(target && !target.token){
+      const idx=r.payments.findIndex(p=>p.date===target.date && Number(p.amt)===Number(target.amt) && (p.note||'')===(target.note||''));
+      if(idx>=0) r.payments.splice(idx,1);
+    }
     if(balance(r)>0) r.fullPaidDate=null;
     await saveOne(r); renderAll();
   }
@@ -1418,11 +1680,67 @@ function collectFmBook(){
   });
   return {fms,fmPhones:phones,fmEmails:emails};
 }
+// ---- message template editors ----
+function defaultTemplateText(key){
+  // Generate the built-in default text by running the message function on a sample record
+  const sample={name:'{name}',model:'{model}',district:'{district}',state:'{state}',phone:'',email:'',fm:'{fm}',
+    tokenDate:'2026-01-01',loaDone:false,meetingDone:false,decision:'',payments:[]};
+  // craft a record whose stage matches the key, then read the message
+  try{
+    if(key.startsWith('wa_')||key.startsWith('email_')){
+      const st=key.split('_')[1];
+      const r={...sample};
+      if(st==='meeting'){}
+      else if(st==='review'){r.meetingDone=true;}
+      else if(st==='approved'){r.meetingDone=true;r.decision='Selected';}
+      else if(st==='agreementdone'){r.meetingDone=true;r.decision='Selected';r.payments=[{amt:CFG.agreeTotal-CFG.token,date:'2026-01-02'}];}
+      else if(st==='balance'){r.meetingDone=true;r.decision='Selected';r.payments=[{amt:CFG.agreeTotal-CFG.token,date:'2026-01-02'}];r.agreeDone=true;r.agreeDate='2026-01-03';}
+      else if(st==='complete'){r.meetingDone=true;r.decision='Selected';r.agreeDone=true;r.agreeDate='2026-01-03';r.payments=[{amt:totalCost(r)-CFG.token,date:'2026-01-04'}];}
+      else if(st==='rejected'){r.meetingDone=true;r.decision='Rejected';r.decisionDate='2026-01-02';}
+      else if(st==='completion'){ return completionBody({name:'{name}',model:'{model}',district:'{district}',fm:'{fm}'}); }
+      const d=derive(r);
+      return key.startsWith('wa_')?waMessage(r,d):emailBody(r,d);
+    }
+  }catch(e){}
+  return '';
+}
+function renderTemplateBook(){
+  const box=document.getElementById('tplBook');
+  document.getElementById('tplTags').textContent=TEMPLATE_PLACEHOLDERS;
+  const T=CFG.templates||{};
+  box.innerHTML=TEMPLATE_REGISTRY.map(g=>`
+    <div class="tpl-group">
+      <div class="tpl-gh">${esc(g.group)}</div>
+      ${g.items.map(it=>`
+        <div class="fld">
+          <label style="display:flex;justify-content:space-between;align-items:center">
+            <span>${esc(it.label)}</span>
+            <button type="button" class="tpl-reset" data-tplkey="${it.key}" title="Fill this box with the current default text so you can edit it">Load default</button>
+          </label>
+          <textarea class="tpl-box" data-tplkey="${it.key}" rows="3" placeholder="(empty = automatic default)">${esc(T[it.key]||'')}</textarea>
+        </div>`).join('')}
+    </div>`).join('');
+}
+function collectTemplates(){
+  const out={};
+  [...document.querySelectorAll('#tplBook .tpl-box')].forEach(t=>{
+    const v=t.value.trim();
+    if(v) out[t.dataset.tplkey]=v;
+  });
+  return out;
+}
 document.getElementById('fmAddRow').onclick=()=>{
   document.getElementById('fmBook').insertAdjacentHTML('beforeend',fmBookRow('','',''));
 };
 document.getElementById('fmBook').addEventListener('click',e=>{
   if(e.target.classList.contains('fm-del')){ e.target.closest('.fm-row').remove(); }
+});
+document.getElementById('tplBook').addEventListener('click',e=>{
+  if(e.target.classList.contains('tpl-reset')){
+    const key=e.target.dataset.tplkey;
+    const box=document.querySelector('#tplBook .tpl-box[data-tplkey="'+key+'"]');
+    if(box){ box.value=defaultTemplateText(key); box.focus(); }
+  }
 });
 
 document.getElementById('btnSettings').onclick=()=>{
@@ -1434,6 +1752,7 @@ document.getElementById('btnSettings').onclick=()=>{
   sCareName.value=CFG.careName||''; sCareEmail.value=CFG.careEmail||''; sCarePhone.value=CFG.carePhone||'';
   sCc.value=CFG.ccEmail||'';
   sSources.value=(CFG.leadSources||[]).join(', ');
+  renderTemplateBook();
   setModal.classList.add('on');
 };
 document.getElementById('sCancel').onclick=()=>setModal.classList.remove('on');
@@ -1447,7 +1766,8 @@ document.getElementById('sSave').onclick=async()=>{
        legalName:sLegName.value.trim(),legalEmail:sLegEmail.value.trim(),legalPhone:sLegPhone.value.trim(),
        careName:sCareName.value.trim(),careEmail:sCareEmail.value.trim(),carePhone:sCarePhone.value.trim(),
        ccEmail:sCc.value.trim(),
-       leadSources:(()=>{let a=sSources.value.split(',').map(s=>s.trim()).filter(Boolean);if(!a.length)a=['Other'];if(!a.includes('Other'))a.push('Other');return a;})()};
+       leadSources:(()=>{let a=sSources.value.split(',').map(s=>s.trim()).filter(Boolean);if(!a.length)a=['Other'];if(!a.includes('Other'))a.push('Other');return a;})(),
+       templates:collectTemplates()};
   await save(); setModal.classList.remove('on'); fillFMs(); renderAll(); toast('Settings saved.');
 };
 
