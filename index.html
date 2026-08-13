@@ -147,6 +147,7 @@ tbody tr.hasflag td.freeze-1{box-shadow:inset 3px 0 0 var(--red)}
 .tpl-box{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:12.5px;font-family:inherit;resize:vertical;line-height:1.5}
 .tpl-reset{font-size:10px;color:var(--blue);background:rgba(0,163,224,.12);border:1px solid rgba(0,163,224,.3);border-radius:6px;padding:2px 8px}
 .tpl-reset:hover{background:var(--blue);color:#04121c}
+.district-chip{display:inline-block;margin-top:5px;padding:2px 8px;border-radius:6px;background:rgba(255,210,30,.14);color:var(--yellow);font-size:10.5px;font-weight:600;font-family:'JetBrains Mono',monospace}
 .empty{padding:60px 20px;text-align:center;color:var(--faint)}
 .empty b{display:block;color:var(--txt);font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-bottom:7px}
 
@@ -225,10 +226,12 @@ tbody tr.hasflag td.freeze-1{box-shadow:inset 3px 0 0 var(--red)}
       <button data-m="all" class="on">All</button>
       <button data-m="Master">Master</button>
       <button data-m="Unit">Unit</button>
+      <button data-m="FICO">FICO</button>
     </div>
     <select class="filt" id="fStage">
       <option value="">All stages</option>
       <option>Token paid</option>
+      <option>LOI pending</option>
       <option>Eligibility review</option>
       <option>Rejected — refund</option>
       <option>Agreement amount due</option>
@@ -251,7 +254,7 @@ tbody tr.hasflag td.freeze-1{box-shadow:inset 3px 0 0 var(--red)}
   <div class="tablewrap">
     <table>
       <thead><tr>
-        <th class="freeze freeze-1">Franchisee</th><th class="freeze freeze-2">Manager</th><th>Source</th><th>District</th><th>Model</th><th>Stage</th>
+        <th class="freeze freeze-1">Franchisee</th><th class="freeze freeze-2">Manager</th><th>Source</th><th>Model</th><th>Stage</th>
         <th>What to do next</th>
         <th>Token ₹50k</th><th>LOI</th><th>Eligibility</th>
         <th>₹9L · 9-day clock</th><th>Agreement · 3-day</th><th>Full amount · 60-day</th>
@@ -300,7 +303,7 @@ tbody tr.hasflag td.freeze-1{box-shadow:inset 3px 0 0 var(--red)}
       <div class="fld"><label>Franchise manager</label><select id="aFM"></select></div>
     </div>
     <div class="grid2">
-      <div class="fld"><label>Model</label><select id="aModel"><option>Master</option><option>Unit</option></select></div>
+      <div class="fld"><label>Model</label><select id="aModel"><option>Master</option><option>Unit</option><option>FICO</option></select></div>
       <div class="fld"><label>₹50,000 token paid on</label><input type="date" id="aDate"></div>
     </div>
     <div class="grid2">
@@ -327,6 +330,14 @@ tbody tr.hasflag td.freeze-1{box-shadow:inset 3px 0 0 var(--red)}
       <div class="fld"><label>Master franchise cost (₹, before GST)</label><input class="num" id="sMaster" type="number"></div>
       <div class="fld"><label>Unit franchise cost (₹, before GST)</label><input class="num" id="sUnit" type="number"></div>
     </div>
+    <div class="grid2">
+      <div class="fld"><label>FICO franchise cost (₹, before GST)</label><input class="num" id="sFico" type="number"></div>
+      <div class="fld"></div>
+    </div>
+    <div class="sect-divider">Brochure links (used in internal emails)</div>
+    <div class="fld"><label>Unit brochure link (PDF URL)</label><input id="sBroUnit" placeholder="https://…/unit-brochure.pdf"></div>
+    <div class="fld"><label>Master brochure link (PDF URL)</label><input id="sBroMaster" placeholder="https://…/master-brochure.pdf"></div>
+    <div class="fld"><label>FICO brochure link (PDF URL)</label><input id="sBroFico" placeholder="https://…/fico-brochure.pdf"></div>
     <div class="grid2">
       <div class="fld"><label>Token amount (₹)</label><input class="num" id="sToken" type="number"></div>
       <div class="fld"><label>Agreement amount, total (₹)</label><input class="num" id="sAgree" type="number"></div>
@@ -504,7 +515,7 @@ async function sbLoadSettings(){
 }
 async function sbSaveSettings(cfg){
   const row={ id:1,
-    mastercost:cfg.masterCost, unitcost:cfg.unitCost, token:cfg.token, agreetotal:cfg.agreeTotal, gst:cfg.gst,
+    mastercost:cfg.masterCost, unitcost:cfg.unitCost, ficocost:cfg.ficoCost, brochureunit:cfg.brochureUnit||"", brochuremaster:cfg.brochureMaster||"", brochurefico:cfg.brochureFico||"", token:cfg.token, agreetotal:cfg.agreeTotal, gst:cfg.gst,
     win9:cfg.win9, win3:cfg.win3, win60:cfg.win60, winloa:cfg.winLoa, winrefund:cfg.winRefund,
     fms:cfg.fms||[], fmphones:cfg.fmPhones||{}, fmemails:cfg.fmEmails||{},
     financename:cfg.financeName||'', financeemail:cfg.financeEmail||'', financephone:cfg.financePhone||'',
@@ -520,7 +531,7 @@ async function sbSaveSettings(cfg){
 }
 function settingsRowToCfg(row){
   return {
-    masterCost:row.mastercost, unitCost:row.unitcost, token:row.token, agreeTotal:row.agreetotal, gst:row.gst,
+    masterCost:row.mastercost, unitCost:row.unitcost, ficoCost:row.ficocost||0, brochureUnit:row.brochureunit||"", brochureMaster:row.brochuremaster||"", brochureFico:row.brochurefico||"", token:row.token, agreeTotal:row.agreetotal, gst:row.gst,
     win9:row.win9, win3:row.win3, win60:row.win60, winLoa:row.winloa, winRefund:row.winrefund,
     fms:row.fms||[], fmPhones:row.fmphones||{}, fmEmails:row.fmemails||{},
     financeName:row.financename||'', financeEmail:row.financeemail||'', financePhone:row.financephone||'',
@@ -541,7 +552,8 @@ function sbStatus(ok,err){
    STATE
    ========================================================= */
 const DEFAULTS={
-  masterCost:5400000, unitCost:3200000,
+  masterCost:5400000, unitCost:3200000, ficoCost:0,
+  brochureUnit:'', brochureMaster:'', brochureFico:'',
   token:50000, agreeTotal:944000, gst:18,
   win9:9, win3:3, win60:60, winLoa:3, winRefund:7,
   fms:['Jeshwanth Kumar','Ram Kishore','Suresh N','Rajendra','Nikhil Rawat','Nikhil Ambhore','Sanjay'],
@@ -565,6 +577,7 @@ function fillDistrictSelect(sel,state,current){
 let CFG={...DEFAULTS};
 let RECORDS=[];
 let view={model:'all',stage:'',fm:'',flag:'',source:'',q:''};
+let FLAGS_COLLAPSED=true;  // escalation panel starts collapsed
 let openId=null;
 
 /* =========================================================
@@ -581,8 +594,15 @@ const uid=()=>'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 function totalCost(r){
-  const base=r.model==='Master'?CFG.masterCost:CFG.unitCost;
+  const base = r.model==='Master'?CFG.masterCost : r.model==='FICO'?(CFG.ficoCost||0) : CFG.unitCost;
   return base*(1+CFG.gst/100);
+}
+function brochureFor(r){
+  return r.model==='Master'?CFG.brochureMaster : r.model==='FICO'?CFG.brochureFico : CFG.brochureUnit;
+}
+function brochureLine(r){
+  const b=brochureFor(r);
+  return b?`\n\n${r.model} model brochure: ${b}`:'';
 }
 // ---- ONE unified payment ledger ----
 // The token is the first (virtual) entry. r.payments holds every payment after the token.
@@ -755,6 +775,23 @@ const TEMPLATE_REGISTRY=[
 const TEMPLATE_PLACEHOLDERS='{name} {model} {district} {state} {token} {agreement} {agreementremaining} {collected} {balance} {total} {fm} {win9} {win3} {win60} {team}';
 
 /* =========================================================
+// Time-aware urgency phrasing based on a clock's state (for customer & internal mails)
+function urgency(c, audience){
+  if(!c) return '';
+  const n=Math.abs(c.left||0);
+  if(audience==='customer'){
+    if(c.state==='overdue') return ` This is now ${n} day(s) past the due date — kindly complete it at the earliest so we can proceed without any delay.`;
+    if(c.state==='due')     return ` This is due today — please try to complete it today itself.`;
+    if(c.left<=3)           return ` Only ${c.left} day(s) remain — kindly hurry and close this so we can move ahead quickly.`;
+    if(c.left<=10)          return ` You have ${c.left} day(s) left — we'd recommend completing it soon to stay on schedule.`;
+    return ` You have ${c.left} day(s) in hand.`;
+  } else { // internal
+    if(c.state==='overdue') return ` It has been ${n} day(s) past the deadline and is still pending — please prioritise.`;
+    if(c.state==='due')     return ` The deadline is today.`;
+    if(c.left<=5)           return ` Only ${c.left} day(s) left to the deadline — please expedite.`;
+    return ` ${c.left} day(s) remain to the deadline.`;
+  }
+}
 function tplContext(r,d){
   const by=dl=>dl?dl.toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}):'';
   const rupee=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');
@@ -798,11 +835,11 @@ function waMessage(r,d){
   if(r.meetingDone&&!r.decision)
     return customTpl('wa_review',r,d) || `Hi ${name}, your Mr GoliSoda franchise eligibility is under review. We'll confirm the next step very soon.`;
   if(!d.agreeDone9)
-    return customTpl('wa_approved',r,d) || `Hi ${name}, congratulations — you're approved for the Mr GoliSoda ${r.model} Franchise! To complete the agreement, please pay the remaining ₹${Math.round(agreeRemaining(r)).toLocaleString('en-IN')} of the ₹${CFG.agreeTotal.toLocaleString('en-IN')} agreement amount (payable in installments). Due within ${CFG.win9} days of your token payment.${daysWord(d.nine)}`;
+    return customTpl('wa_approved',r,d) || `Hi ${name}, congratulations — you're approved for the Mr GoliSoda ${r.model} Franchise! To complete the agreement, please pay the remaining ₹${Math.round(agreeRemaining(r)).toLocaleString('en-IN')} of the ₹${CFG.agreeTotal.toLocaleString('en-IN')} agreement amount (payable in installments). Due within ${CFG.win9} days of your token payment.${urgency(d.nine,"customer")}`;
   if(!r.agreeDone)
     return customTpl('wa_agreementdone',r,d) || `Hi ${name}, we've received your full ₹${CFG.agreeTotal.toLocaleString('en-IN')} agreement amount — thank you! Your franchise agreement will be handed over within ${CFG.win3} days, and our team will reach out about your onboarding meet.`;
   if(balance(r)>0)
-    return customTpl('wa_balance',r,d) || `Hi ${name}, regarding your Mr GoliSoda ${r.model} Franchise — the remaining balance of ₹${Math.round(balance(r)).toLocaleString('en-IN')} is due within ${CFG.win60} days of your agreement amount payment.${daysWord(d.sixty)} Please let us know a convenient time to complete it.`;
+    return customTpl('wa_balance',r,d) || `Hi ${name}, regarding your Mr GoliSoda ${r.model} Franchise — the remaining balance of ₹${Math.round(balance(r)).toLocaleString('en-IN')} is due within ${CFG.win60} days of your agreement amount payment.${urgency(d.sixty,"customer")} Please let us know a convenient time to complete it.`;
   return customTpl('wa_complete',r,d) || `Hi ${name}, thank you for completing your Mr GoliSoda ${r.model} Franchise. Welcome aboard!`;
 }
 function waOpen(r){
@@ -837,13 +874,13 @@ function emailBody(r,d){
     return customTpl('email_review',r,d) || `Dear ${nm},\n\nThank you for taking the time to meet with us — it was a pleasure getting to know you and understanding your vision for the Mr GoliSoda ${r.model} Franchise.\n\nYour application is now with our founder for final review. We will be in touch very shortly with the outcome and the next step. We appreciate your patience and enthusiasm.${sign}`;
 
   if(!d.agreeDone9)
-    return customTpl('email_approved',r,d) || `Dear ${nm},\n\nWonderful news — congratulations! You have been approved for the Mr GoliSoda ${r.model} Franchise. We're thrilled to welcome you as our partner.\n\nTo move forward and secure your franchise, the next step is to complete the agreement amount of ₹${CFG.agreeTotal.toLocaleString('en-IN')} (inclusive of your token). The remaining ₹${Math.round(agreeRemaining(r)).toLocaleString('en-IN')} may be paid in one or more installments${d.dl9?', kindly to be completed by '+by(d.dl9):''}.${d.nine&&d.nine.left>0?` You have ${d.nine.left} day(s) in hand — we'd be happy to assist you at your convenience.`:d.nine&&d.nine.state==='overdue'?` We'd be grateful if this could be completed at the earliest so we can proceed without delay.`:''}\n\nOnce fully received, we'll promptly move ahead with your franchise agreement.${sign}`;
+    return customTpl('email_approved',r,d) || `Dear ${nm},\n\nWonderful news — congratulations! You have been approved for the Mr GoliSoda ${r.model} Franchise. We're thrilled to welcome you as our partner.\n\nTo move forward and secure your franchise, the next step is to complete the agreement amount of ₹${CFG.agreeTotal.toLocaleString('en-IN')} (inclusive of your token). The remaining ₹${Math.round(agreeRemaining(r)).toLocaleString('en-IN')} may be paid in one or more installments${d.dl9?', kindly to be completed by '+by(d.dl9):''}.${urgency(d.nine,"customer")}\n\nOnce fully received, we'll promptly move ahead with your franchise agreement.${sign}`;
 
   if(!r.agreeDone)
     return customTpl('email_agreementdone',r,d) || `Dear ${nm},\n\nThank you — we're pleased to confirm that we have received your full agreement amount of ₹${CFG.agreeTotal.toLocaleString('en-IN')}. Congratulations on completing this important milestone!\n\nTwo things are now underway:\n1. Your franchise agreement is being prepared and will be shared with you within ${CFG.win3} days.\n2. Our Franchisee Care team will connect with you shortly to schedule your onboarding meet.\n\nCould you please share a couple of convenient time slots for the onboarding meet? We're excited to have you on board.${sign}`;
 
   if(balance(r)>0)
-    return customTpl('email_balance',r,d) || `Dear ${nm},\n\nYou're on the final stretch of your Mr GoliSoda ${r.model} Franchise journey, and we're delighted to have you with us.\n\nTo complete the process, the remaining balance of ₹${Math.round(balance(r)).toLocaleString('en-IN')} is due${d.dl60?' by '+by(d.dl60):''}. Once this is settled, everything will be in place for your franchise to move ahead. Please let us know a convenient time, and we'll be glad to support you through it.\n\nThank you for your trust in Mr GoliSoda.${sign}`;
+    return customTpl('email_balance',r,d) || `Dear ${nm},\n\nYou're on the final stretch of your Mr GoliSoda ${r.model} Franchise journey, and we're delighted to have you with us.\n\nTo complete the process, the remaining balance of ₹${Math.round(balance(r)).toLocaleString('en-IN')} is due${d.dl60?' by '+by(d.dl60):''}.${urgency(d.sixty,"customer")} Once this is settled, everything will be in place for your franchise to move ahead. Please let us know a convenient time, and we'll be glad to support you through it.\n\nThank you for your trust in Mr GoliSoda.${sign}`;
 
   return customTpl('email_complete',r,d) || `Dear ${nm},\n\nCongratulations, and a very warm welcome to the Mr GoliSoda family! 🎉\n\nYour onboarding for the ${r.model} Franchise is now complete — every step done, every formality in place. It's been a genuine pleasure guiding you here, and we're excited for the road ahead.\n\nOur team will stay closely in touch to support your success at every stage. Here's to a thriving partnership!${sign}`;
 }
@@ -872,13 +909,14 @@ const ANNOUNCE_TEAM=[
 ];
 // Departments CC'd for their own action (roles NOT named in the body)
 const ANNOUNCE_CC_ONLY=['legal@safc.ltd','training@safc.ltd','hr.recruit@safc.ltd','finance@safc.ltd','nationalbdm@safc.ltd'];
+// CC for the WELCOME email: only NSM + this franchisee's FM + Customer Success
 function ccAllTeams(r){
   const list=[];
   const add=e=>{ if(e && !list.includes(e)) list.push(e); };
-  ANNOUNCE_TEAM.forEach(t=>add(t.email));      // 5 named heads
-  ANNOUNCE_CC_ONLY.forEach(e=>add(e));         // 5 CC-only departments
-  add(CFG.ccEmail);                            // Ajay / NBDM (from Settings)
+  add('nationalsalesmanager@safc.ltd');        // Thulasi — NSM
   add(r&&r.fm?fmEmail(r.fm):'');               // this franchisee's FM
+  add('customersuccess@safc.ltd');             // Arun — Customer Success
+  add(CFG.ccEmail||'nationalbdm@safc.ltd');    // Ajay — NBDM
   return list.join(',');
 }
 function completionSubject(r){ return '\ud83c\udf89 Welcome to the Mr GoliSoda Family \u2014 '+r.name+' ('+r.model+' Franchise)'; }
@@ -905,6 +943,59 @@ function sendCompletionEmail(r){
   if(!r.email){ toast('No franchisee email saved — add it in Record details first.'); return; }
   mailto(r.email, completionSubject(r), completionBody(r), ccAllTeams(r));
 }
+
+/* ---- Operations procurement email (on full payment) ---- */
+function opsSubject(r){ return 'Procurement: Begin — '+r.name+' ('+r.model+' Franchise, '+(r.district||'district TBD')+') fully paid'; }
+// Model-specific procurement checklist (from the franchise brochures)
+function procurementList(model){
+  if(model==='Master'){
+    return `Machinery — Golisoda Filling Machine (16 BPM) full setup, which includes:\n`+
+`   • Gas Bank\n   • Compressor\n   • Four-Stage Glass Bottle Washing Unit\n   • Sugar Heating Vessel\n   • Essence Tank\n   • Working Table\n   • Inspection Lamp\n   • Batch Printing Machine Setup\n   • CO2 Cylinders — 5 nos\n`+
+`Glass Bottles   : 36,000 nos\n`+
+`Trays           : 1,500 units\n`+
+`Visicoolers     : 80–100 (based on shop-size requirement, sent in batches)\n`+
+`RO Plant        : to be procured separately by the franchisee (not part of the franchise setup)`;
+  }
+  if(model==='FICO'){
+    return `Please refer to the FICO model brochure for the full machinery and material procurement list.`;
+  }
+  // Unit (distribution)
+  return `Glass Bottles   : 26,400 nos\n`+
+`Trays           : 1,100 units\n`+
+`Visicoolers     : 40–50 (based on shop-size requirement, sent in batches)\n`+
+`Note            : A load vehicle is required to operate this distribution franchise (arranged separately by the franchisee).`;
+}
+function opsBody(r){
+  const bro=brochureFor(r);
+  return `Hi Operations Team,\n\n`+
+`The following franchisee has PAID IN FULL. Kindly begin procurement of the materials and machinery required to open this franchise.\n\n`+
+`Franchisee     : ${r.name}\n`+
+`Contact number : ${r.phone||'—'}\n`+
+`Franchise model: ${r.model}\n`+
+`Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
+`Total received : ${inr(collected(r))}\n`+
+`Franchise mgr  : ${r.fm||'—'}${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}\n\n`+
+`ITEMS TO PROCURE (${r.model} model):\n`+
+procurementList(r.model)+`\n\n`+
+`IMPORTANT — Before dispatch, please confirm with the Legal department that the MSME registration and the franchise agreement are in order.\n\n`+
+`This franchisee is fully paid and we aim to open in the coming month, so kindly prioritise procurement accordingly.\n\n`+
+`For the complete breakup and any further clarifications, please refer to the ${r.model} franchise brochure`+(bro?` here: ${bro}`:` (attached).`)+`\n\n`+
+`All concerned departments are copied for visibility.\n\nThanks.`;
+}
+// CC for the ops mail: all department heads + the CC-only departments + admin (Ajay) + FM
+function ccOps(r){
+  const list=[];
+  const add=e=>{ if(e && !list.includes(e)) list.push(e); };
+  ANNOUNCE_TEAM.forEach(t=>add(t.email));   // Siva, Dhanush, Thulasi, Arun, Yogaraj
+  ANNOUNCE_CC_ONLY.forEach(e=>add(e));      // legal, training, hr.recruit, finance, nationalbdm
+  add(CFG.ccEmail);                         // Ajay / admin
+  add(r&&r.fm?fmEmail(r.fm):'');            // FM
+  // remove operations head from CC since they're the TO
+  return list.filter(e=>e!=='operationhead@safc.ltd').join(',');
+}
+function sendOpsEmail(r){
+  mailto('operationhead@safc.ltd', opsSubject(r), opsBody(r), ccOps(r));
+}
 function emailOpen(r){
   if(!r.email){ toast('No email saved for '+r.name+'.'); return; }
   const d=derive(r);
@@ -914,8 +1005,9 @@ function emailOpen(r){
 /* ---- Internal inter-department hand-offs (Finance = LOI/refund, Legal = Agreement, Care = onboarding) ---- */
 function loaSubject(r){ return 'Action: Issue LOI — '+r.name+' ('+r.model+' Franchise, '+(r.district||'district TBD')+')'; }
 function loaBody(r){
+  const d=derive(r);
   return `Hi ${CFG.financeName||'Finance Team'},\n\n`+
-`The following franchisee has paid the ₹${CFG.token.toLocaleString('en-IN')} token. Please issue the Letter of Intent (LOI).\n\n`+
+`The following franchisee has paid the ₹${CFG.token.toLocaleString('en-IN')} token. Please issue the Letter of Intent (LOI).${urgency(d.loa,'internal')}\n\n`+
 `Franchisee     : ${r.name}\n`+
 `Contact number : ${r.phone||'—'}\n`+
 `Email          : ${r.email||'—'}\n`+
@@ -923,7 +1015,7 @@ function loaBody(r){
 `Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
 `Token paid on  : ${fmtD(r.tokenDate)}\n`+
 `Franchise mgr  : ${r.fm||'—'}\n\n`+
-`Please share the LOI with the franchisee at the earliest.\n\nThanks.`;
+`Please share the LOI with the franchisee at the earliest.\n\nThanks.`+brochureLine(r);
 }
 function refundSubject(r){ return 'Action: Process refund — '+r.name+' ('+r.model+' Franchise)'; }
 function refundBody(r){
@@ -936,7 +1028,7 @@ function refundBody(r){
 `Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
 `Token paid on  : ${fmtD(r.tokenDate)}\n`+
 `Decision date  : ${fmtD(r.decisionDate)}\n\n`+
-`Please process the refund at the earliest.\n\nThanks.`;
+`Please process the refund at the earliest.\n\nThanks.`+brochureLine(r);
 }
 function careSubject(r){ return 'Onboarding: Begin process — '+r.name+' ('+r.model+' Franchise, '+(r.district||'district TBD')+')'; }
 function careBody(r){
@@ -948,7 +1040,7 @@ function careBody(r){
 `Franchise model: ${r.model}\n`+
 `Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
 `Franchise mgr  : ${r.fm||'—'}${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}\n\n`+
-`Kindly initiate onboarding and stay in touch with the franchisee. Thanks.`;
+`Kindly initiate onboarding and stay in touch with the franchisee. Thanks.`+brochureLine(r);
 }
 // Care notification specifically at agreement-complete: schedule the onboarding meet
 function careMeetSubject(r){ return 'Onboarding meet: Schedule — '+r.name+' ('+r.model+' Franchise, '+(r.district||'district TBD')+')'; }
@@ -961,7 +1053,7 @@ function careMeetBody(r){
 `Franchise model: ${r.model}\n`+
 `Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
 `Franchise mgr  : ${r.fm||'—'}${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}\n\n`+
-`Please reach out and fix a convenient time for the onboarding meet. Thanks.`;
+`Please reach out and fix a convenient time for the onboarding meet. Thanks.`+brochureLine(r);
 }
 // Message to the franchisee at agreement-complete: agreement coming + onboarding meet
 function custAgreeSubject(r){ return 'Mr GoliSoda '+r.model+' Franchise — Agreement & onboarding meet'; }
@@ -990,8 +1082,9 @@ function custAgreeWa(r){
 }
 function agreementSubject(r){ return 'Action: Prepare Agreement — '+r.name+' ('+r.model+' Franchise, '+(r.district||'district TBD')+')'; }
 function agreementBody(r){
+  const d=derive(r);
   return `Hi ${CFG.legalName||'Legal Team'},\n\n`+
-`The following franchisee has paid the ₹${CFG.agreeTotal.toLocaleString('en-IN')} agreement amount. Please prepare and send the franchise agreement as soon as possible.\n\n`+
+`The following franchisee has paid the ₹${CFG.agreeTotal.toLocaleString('en-IN')} agreement amount. Please prepare and send the franchise agreement as soon as possible.${urgency(d.three,'internal')}\n\n`+
 `Franchisee            : ${r.name}\n`+
 `Franchisee contact    : ${r.phone||'—'}\n`+
 `Franchisee email      : ${r.email||'—'}\n`+
@@ -999,7 +1092,7 @@ function agreementBody(r){
 `District requested    : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
 `₹${CFG.agreeTotal.toLocaleString('en-IN')} received on : ${fmtD(r.agreePaidDate)}\n`+
 `Franchise manager     : ${r.fm||'—'}${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}\n\n`+
-`Please send the agreement to the franchisee at the earliest.\n\nThanks.`;
+`Please send the agreement to the franchisee at the earliest.\n\nThanks.`+brochureLine(r);
 }
 // optional per-FM phone book (kept in CFG.fmPhones if present)
 function fmPhone(fm){ return (CFG.fmPhones&&CFG.fmPhones[fm])||''; }
@@ -1065,7 +1158,10 @@ function filtered(){
   return RECORDS.filter(r=>{
     const d=derive(r);
     if(view.model!=='all'&&r.model!==view.model) return false;
-    if(view.stage&&d.stage!==view.stage) return false;
+    if(view.stage==='LOI pending'){
+      // token paid, not rejected, LOI not yet issued
+      if(r.loaDone || r.decision==='Rejected' || !r.tokenDate) return false;
+    } else if(view.stage&&d.stage!==view.stage) return false;
     if(view.fm&&r.fm!==view.fm) return false;
     if(view.source&&(r.source||'')!==view.source) return false;
     if(view.flag==='red'&&!d.flags.length) return false;
@@ -1078,8 +1174,18 @@ function filtered(){
   });
 }
 
+// Records in scope for the top KPIs + escalation panel — respects manager + model filters
+function kpiScope(){
+  return RECORDS.filter(r=>{
+    if(view.model!=='all'&&r.model!==view.model) return false;
+    if(view.fm&&r.fm!==view.fm) return false;
+    return true;
+  });
+}
+
 function renderKPIs(){
-  const rs=RECORDS.map(r=>({r,d:derive(r)}));
+  const scope=kpiScope();
+  const rs=scope.map(r=>({r,d:derive(r)}));
   const active=rs.filter(x=>x.d.stage!=='Refund done');
   const flagged=rs.filter(x=>x.d.flags.length);
   const coll=rs.reduce((s,x)=>s+collected(x.r),0);
@@ -1087,12 +1193,13 @@ function renderKPIs(){
   const refundDue=rs.filter(x=>x.r.decision==='Rejected'&&!x.r.refundDone).length;
   const inReview=rs.filter(x=>x.d.stage==='Eligibility review'||x.d.stage==='Token paid').length;
   const done=rs.filter(x=>x.d.stage==='Completed').length;
+  const who = view.fm ? view.fm : (view.model!=='all'?view.model+' model':'all managers');
   const K=[
     ['Tracked',active.length,'live franchisees','' ],
     ['Awaiting eligibility',inReview,'token paid, not cleared','gold'],
     ['Red flags',flagged.length,'need escalation today',flagged.length?'bad':'good'],
     ['Refund due',refundDue,'rejected, ₹50k pending',refundDue?'warn':'good'],
-    ['Collected',inrShort(coll),'across all records','good'],
+    ['Collected',inrShort(coll),'for '+who,'good'],
     ['Outstanding',inrShort(bal),'still to be received','warn'],
     ['Completed',done,'full amount received','good'],
   ];
@@ -1101,23 +1208,26 @@ function renderKPIs(){
 }
 
 function renderFlags(){
+  const scope=kpiScope();
   const list=[];
-  RECORDS.forEach(r=>derive(r).flags.forEach(f=>list.push({r,f})));
+  scope.forEach(r=>derive(r).flags.forEach(f=>list.push({r,f})));
   const box=document.getElementById('flagbox');
+  const collapsed = FLAGS_COLLAPSED;
+  const scopeLabel = view.fm ? (' · '+esc(view.fm)) : (view.model!=='all'?(' · '+view.model):'');
   if(!list.length){
     box.style.borderColor='rgba(37,193,154,.3)';
     box.style.background='linear-gradient(180deg,rgba(37,193,154,.07),transparent 70%)';
-    box.innerHTML=`<div class="allclear">● Nothing overdue. Every clock is inside its window.</div>`;
+    box.innerHTML=`<div class="allclear">● Nothing overdue${scopeLabel}. Every clock is inside its window.</div>`;
     return;
   }
   box.style.borderColor='rgba(255,77,94,.32)';
   box.style.background='linear-gradient(180deg,rgba(255,77,94,.09),transparent 70%)';
-  box.innerHTML=`<h3>Escalate now <span class="count">${list.length}</span></h3>`+
-    list.map(x=>`<div class="flagrow" data-open="${x.r.id}">
+  box.innerHTML=`<h3 id="flagHead" style="cursor:pointer;user-select:none">${collapsed?'▶':'▼'} Escalate now <span class="count">${list.length}</span><span style="font-size:11px;color:var(--faint);font-weight:400">${scopeLabel}</span></h3>`+
+    (collapsed?'':list.map(x=>`<div class="flagrow" data-open="${x.r.id}">
       <span class="nm">${esc(x.r.name)}</span>
       <span class="ms">${esc(x.f)}</span>
       <span class="fm">${esc(x.r.fm||'unassigned')} · ${esc(x.r.model)}</span>
-    </div>`).join('');
+    </div>`).join(''));
 }
 
 function chip(c){ return c?`<span class="chip ${c.cls}">${c.txt}</span>`:'<span class="chip c-grey">—</span>'; }
@@ -1136,13 +1246,13 @@ function renderTable(){
     const stageCls = d.stage==='Completed'?'c-green':d.stage.startsWith('Rejected')?'c-red':d.stage==='Refund done'?'c-grey':'c-blue';
     return `<tr data-open="${r.id}" class="${d.flags.length?'hasflag':''}">
       <td class="freeze freeze-1"><div class="nmcell">${esc(r.name)}<small>${esc(r.phone||'no number')}</small></div>
+        ${r.district?`<span class="district-chip">${esc(r.district)}</span>`:''}
         <div class="rowbtns">
         ${waNumber(r.phone)?`<button class="wabtn" data-wa="${r.id}" title="WhatsApp reminder">WhatsApp</button>`:''}
         ${r.email?`<button class="mailbtn" data-mail="${r.id}" title="Email reminder">Email</button>`:''}
         </div></td>
       <td class="freeze freeze-2" style="color:var(--dim)">${esc(r.fm||'—')}</td>
       <td>${r.source?`<span class="chip c-grey">${esc(r.source)}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
-      <td style="color:var(--dim)">${r.district?esc(r.district):'<span style="color:var(--faint)">—</span>'}</td>
       <td><span class="pill ${r.model==='Master'?'master':'unit'}">${r.model}</span></td>
       <td><span class="chip ${stageCls}">${d.stage}</span></td>
       <td><span class="next next-${d.next.tone}">${esc(d.next.txt)}</span></td>
@@ -1329,14 +1439,17 @@ function renderDrawer(){
       </div>
     </div>`:''}
 
-    <!-- Full payment complete: one congratulatory email to franchisee, all teams in CC -->
+    <!-- Full payment complete: welcome email to franchisee + procurement email to Operations -->
     ${balance(r)<=0?`
     <div class="step handoff" style="border-color:rgba(37,193,154,.35);background:linear-gradient(180deg,rgba(37,193,154,.08),transparent)">
-      <div class="sh"><span class="st">🎉 Fully paid — send the welcome &amp; completion email</span>${r.careNotified?'<span class="chip c-green">Sent</span>':'<span class="chip c-amber">Not sent</span>'}</div>
-      <div class="sd">One email to <b>${esc(r.name)}</b> congratulating them, introducing the teams handling their processes — with Finance, Legal, Care (${esc(CFG.careName||'Arun')}), Ajay &amp; the FM all in CC.</div>
-      <div class="handoff-btns" style="margin-top:10px">
-        ${r.email?`<button class="mailbtn" id="completionMail">Send completion email</button>`:'<span style="font-size:11px;color:var(--red)">Add the franchisee email in Record details first.</span>'}
-        ${waNumber(r.phone)?`<button class="wabtn" id="careWa" style="margin-top:0">WhatsApp Care (optional)</button>`:''}
+      <div class="sh"><span class="st">🎉 Fully paid — send the completion emails</span>${r.careNotified?'<span class="chip c-green">Sent</span>':'<span class="chip c-amber">Not sent</span>'}</div>
+      <div class="handoff-btns" style="margin-top:6px">
+        <span style="font-size:11px;color:var(--faint);width:100%">Welcome email to <b>${esc(r.name)}</b> — CC: NSM, FM &amp; Customer Success:</span>
+        ${r.email?`<button class="mailbtn" id="completionMail">Send welcome email</button>`:'<span style="font-size:11px;color:var(--red)">Add the franchisee email in Record details first.</span>'}
+      </div>
+      <div class="handoff-btns" style="margin-top:8px">
+        <span style="font-size:11px;color:var(--faint);width:100%">Procurement email to Operations — CC: all departments &amp; admin${brochureFor(r)?' (brochure link included)':''}:</span>
+        <button class="mailbtn" id="opsMail">Send procurement email</button>
         <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="careNotified" ${r.careNotified?'checked':''}> Sent</label>
       </div>
     </div>`:''}
@@ -1351,7 +1464,7 @@ function renderDrawer(){
     <div class="fld"><label>Email address</label><input data-f="email" type="email" value="${esc(r.email||'')}"></div>
     <div class="grid2">
       <div class="fld"><label>Franchise manager</label><select data-f="fm">${['',...CFG.fms].map(f=>`<option ${r.fm===f?'selected':''}>${esc(f)}</option>`).join('')}</select></div>
-      <div class="fld"><label>Model</label><select data-f="model"><option ${r.model==='Master'?'selected':''}>Master</option><option ${r.model==='Unit'?'selected':''}>Unit</option></select></div>
+      <div class="fld"><label>Model</label><select data-f="model"><option ${r.model==='Master'?'selected':''}>Master</option><option ${r.model==='Unit'?'selected':''}>Unit</option><option ${r.model==='FICO'?'selected':''}>FICO</option></select></div>
     </div>
     <div class="grid2">
       <div class="fld"><label>State / UT</label><select data-f="state" id="dState"></select></div>
@@ -1448,6 +1561,8 @@ document.addEventListener('click',e=>{
   if(ew){ e.stopPropagation(); const r=RECORDS.find(x=>x.id===ew.dataset.escWa); if(r) escalateFmWa(r); return; }
   const em=e.target.closest('[data-esc-mail]');
   if(em){ e.stopPropagation(); const r=RECORDS.find(x=>x.id===em.dataset.escMail); if(r) escalateFmEmail(r); return; }
+  const flagHead=e.target.closest('#flagHead');
+  if(flagHead){ FLAGS_COLLAPSED=!FLAGS_COLLAPSED; renderFlags(); return; }
   const row=e.target.closest('[data-open]');
   if(row){ openDrawer(row.dataset.open); }
 });
@@ -1493,6 +1608,7 @@ document.getElementById('dBody').addEventListener('click',async e=>{
   if(e.target.id==='refWa'){ notifyRefundWa(r); return; }
   if(e.target.id==='careMail'){ if(!CFG.careEmail){toast('Add the Franchisee Care email in Settings first.');return;} notifyCareEmail(r); return; }
   if(e.target.id==='completionMail'){ sendCompletionEmail(r); return; }
+  if(e.target.id==='opsMail'){ sendOpsEmail(r); return; }
   if(e.target.id==='careWa'){ notifyCareWa(r); return; }
   if(e.target.id==='careMailA'){ if(!CFG.careEmail){toast('Add the Franchisee Care email in Settings first.');return;} notifyCareMeetEmail(r); return; }
   if(e.target.id==='careWaA'){ notifyCareMeetWa(r); return; }
@@ -1534,10 +1650,10 @@ document.getElementById('dBody').addEventListener('click',async e=>{
 document.getElementById('tabs').onclick=e=>{
   if(!e.target.dataset.m) return;
   [...e.currentTarget.children].forEach(b=>b.classList.toggle('on',b===e.target));
-  view.model=e.target.dataset.m; renderTable();
+  view.model=e.target.dataset.m; renderKPIs(); renderFlags(); renderTable();
 };
 document.getElementById('fStage').onchange=e=>{view.stage=e.target.value;renderTable();};
-document.getElementById('fFM').onchange=e=>{view.fm=e.target.value;renderTable();};
+document.getElementById('fFM').onchange=e=>{view.fm=e.target.value; renderKPIs(); renderFlags(); renderTable();};
 document.getElementById('fSource').onchange=e=>{view.source=e.target.value;renderTable();};
 document.getElementById('fFlag').onchange=e=>{view.flag=e.target.value;renderTable();};
 document.getElementById('search').oninput=e=>{view.q=e.target.value;renderTable();};
@@ -1745,6 +1861,8 @@ document.getElementById('tplBook').addEventListener('click',e=>{
 
 document.getElementById('btnSettings').onclick=()=>{
   sMaster.value=CFG.masterCost; sUnit.value=CFG.unitCost; sToken.value=CFG.token;
+  sFico.value=CFG.ficoCost||0;
+  sBroUnit.value=CFG.brochureUnit||''; sBroMaster.value=CFG.brochureMaster||''; sBroFico.value=CFG.brochureFico||'';
   sAgree.value=CFG.agreeTotal; sGst.value=CFG.gst; sW9.value=CFG.win9; sW3.value=CFG.win3;
   sW60.value=CFG.win60; sWloa.value=CFG.winLoa; sWref.value=CFG.winRefund; renderFmBook();
   sFinName.value=CFG.financeName||''; sFinEmail.value=CFG.financeEmail||''; sFinPhone.value=CFG.financePhone||'';
@@ -1759,7 +1877,8 @@ document.getElementById('sCancel').onclick=()=>setModal.classList.remove('on');
 document.getElementById('sSave').onclick=async()=>{
   const book=collectFmBook();
   CFG={...CFG,
-       masterCost:+sMaster.value,unitCost:+sUnit.value,token:+sToken.value,agreeTotal:+sAgree.value,
+       masterCost:+sMaster.value,unitCost:+sUnit.value,ficoCost:+sFico.value,token:+sToken.value,agreeTotal:+sAgree.value,
+       brochureUnit:sBroUnit.value.trim(),brochureMaster:sBroMaster.value.trim(),brochureFico:sBroFico.value.trim(),
        gst:+sGst.value,win9:+sW9.value,win3:+sW3.value,win60:+sW60.value,winLoa:+sWloa.value,
        winRefund:+sWref.value,fms:book.fms,fmPhones:book.fmPhones,fmEmails:book.fmEmails,
        financeName:sFinName.value.trim(),financeEmail:sFinEmail.value.trim(),financePhone:sFinPhone.value.trim(),
