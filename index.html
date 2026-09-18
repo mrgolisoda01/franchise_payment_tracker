@@ -39,6 +39,22 @@ header.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom
 /* ---------- kpi ---------- */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:12px;margin-bottom:18px}
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden}
+.kpi[data-kpi]{cursor:pointer;transition:.12s}
+.kpi[data-kpi]:hover{border-color:var(--blue);background:var(--panel2)}
+.kpi.active{border-color:var(--blue);border-width:2px;box-shadow:0 0 0 1px var(--blue) inset;background:linear-gradient(180deg,rgba(0,163,224,.1),var(--panel))}
+.view-tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line)}
+.view-tabs button{background:transparent;border:none;color:var(--faint);padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent}
+.view-tabs button.on{color:var(--blue);border-bottom-color:var(--blue)}
+.view-tabs button:hover{color:var(--dim)}
+.inc-status-due{color:var(--amber);font-weight:600}
+.inc-status-scheduled{color:var(--faint)}
+.inc-status-paid{color:var(--green);font-weight:600}
+.inc-status-forfeited{color:var(--red)}
+.inc-status-awaiting-payment{color:var(--dim)}
+.inc-status-awaiting-forfeit{color:var(--red)}
+.inc-status-cancelled{color:var(--faint)}
+.inc-status-deduct-due{color:var(--red);font-weight:700}
+.inc-status-deducted{color:var(--green)}
 .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--blue)}
 .kpi.warn::before{background:var(--amber)} .kpi.bad::before{background:var(--red)}
 .kpi.good::before{background:var(--green)} .kpi.gold::before{background:var(--yellow)}
@@ -73,6 +89,15 @@ th{text-align:left;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;
 td{padding:12px;border-bottom:1px solid rgba(38,54,74,.5);vertical-align:middle;font-size:13px}
 tbody tr{cursor:pointer;transition:.12s}
 tbody tr:hover{background:var(--panel2)}
+tbody tr.row-cancelled{background:rgba(255,77,94,.12)}
+tbody tr.row-cancelled td.freeze{background:#2b1519}
+tbody tr.row-cancelled:hover{background:rgba(255,77,94,.18)}
+tbody tr.row-complete{background:rgba(37,193,154,.12)}
+tbody tr.row-complete td.freeze{background:#132821}
+tbody tr.row-complete:hover{background:rgba(37,193,154,.18)}
+tbody tr.row-pending{background:rgba(255,166,43,.12)}
+tbody tr.row-pending td.freeze{background:#2b2314}
+tbody tr.row-pending:hover{background:rgba(255,166,43,.18)}
 
 /* --- Frozen first two columns: Franchisee + Manager --- */
 th.freeze, td.freeze{position:sticky;background:var(--panel);z-index:3}
@@ -126,6 +151,13 @@ tbody tr.hasflag td.freeze-1{box-shadow:inset 3px 0 0 var(--red)}
 .mailbtn:hover{background:var(--blue);color:#04121c}
 .mailbtn:hover::before{background:#04121c}
 .rowbtns{display:flex;gap:6px;flex-wrap:wrap}
+.paytags{display:flex;gap:5px;flex-wrap:wrap;margin:5px 0}
+.paytag{font-size:9.5px;font-weight:700;letter-spacing:.3px;padding:2px 6px;border-radius:5px;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.paytag.ta{background:rgba(93,115,141,.18);color:var(--dim)}
+.paytag.ag{background:rgba(255,166,43,.16);color:var(--amber)}
+.paytag.fp{background:rgba(37,193,154,.16);color:var(--green)}
+.paytag.model{background:rgba(0,163,224,.16);color:var(--blue)}
+.paytag.dist{background:rgba(139,92,246,.16);color:var(--violet)}
 .step.handoff{border-color:rgba(255,210,30,.3);background:linear-gradient(180deg,rgba(255,210,30,.05),transparent)}
 .handoff-btns{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
 .handoff-btns .wabtn,.handoff-btns .mailbtn{margin-top:0}
@@ -148,7 +180,7 @@ tbody tr.hasflag td.freeze-1{box-shadow:inset 3px 0 0 var(--red)}
 .tpl-reset{font-size:10px;color:var(--blue);background:rgba(0,163,224,.12);border:1px solid rgba(0,163,224,.3);border-radius:6px;padding:2px 8px}
 .tpl-reset:hover{background:var(--blue);color:#04121c}
 .district-chip{display:inline-block;margin-top:5px;padding:2px 8px;border-radius:6px;background:rgba(255,210,30,.14);color:var(--yellow);font-size:10.5px;font-weight:600;font-family:'JetBrains Mono',monospace}
-.reminder-box{margin-top:12px;padding:11px 13px;border-radius:10px;border:1px solid}
+.reminder-box{margin-top:12px;padding:11px 13px;border-radius:10px;border:1px solid rgba(0,163,224,.3);background:rgba(0,163,224,.06)}
 .reminder-box.amber{background:rgba(255,176,32,.08);border-color:rgba(255,176,32,.35)}
 .reminder-box.red{background:rgba(255,77,94,.09);border-color:rgba(255,77,94,.4)}
 .reminder-box .rm-h{font-weight:600;font-size:13px;margin-bottom:3px}
@@ -242,6 +274,12 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
     <button class="btn primary" id="btnAdd">+ New franchisee</button>
   </header>
 
+  <div class="view-tabs" id="viewTabs">
+    <button data-view="fr" class="on">Franchisees</button>
+    <button data-view="inc">FM Incentive Payouts</button>
+  </div>
+
+  <div id="viewFranchisees">
   <div class="kpis" id="kpis"></div>
   <div class="flagbox" id="flagbox"></div>
 
@@ -255,19 +293,24 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
     <select class="filt" id="fStage">
       <option value="">All stages</option>
       <option>Token paid</option>
+      <option>ERP contact pending</option>
       <option>LOI pending</option>
+      <option>LOI sent</option>
+      <option>Meeting pending</option>
       <option>Eligibility review</option>
       <option>Rejected — refund</option>
       <option>Agreement amount due</option>
       <option>Agreement pending</option>
       <option>Balance due</option>
       <option>Completed</option>
+      <option>Cancelled</option>
     </select>
     <select class="filt" id="fFM"><option value="">All managers</option></select>
     <select class="filt" id="fSource"><option value="">All sources</option></select>
     <select class="filt" id="fFlag">
       <option value="">Flags: any</option>
       <option value="red">Red flags only</option>
+      <option value="ceo">Escalate to CEO</option>
       <option value="clean">No flags</option>
     </select>
     <input class="search" id="search" placeholder="Search name or number">
@@ -299,6 +342,44 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
     <span><i style="background:var(--amber)"></i> Due within 3 days</span>
     <span><i style="background:var(--red)"></i> Overdue — red flag</span>
     <span><i style="background:var(--green)"></i> Done</span>
+  </div>
+  </div>
+
+  <div id="viewIncentives" style="display:none">
+    <div class="kpis" id="incKpis"></div>
+    <div class="controls">
+      <select class="filt" id="incFM"><option value="">All managers</option></select>
+      <select class="filt" id="incStatus">
+        <option value="">All statuses</option>
+        <option value="due">Due now</option>
+        <option value="scheduled">Scheduled</option>
+        <option value="paid">Paid</option>
+        <option value="forfeited">Forfeited</option>
+        <option value="awaiting-payment">Awaiting full payment</option>
+        <option value="awaiting-forfeit">Overdue, likely forfeit</option>
+      </select>
+      <div class="spacer"></div>
+      <span class="num" id="incRowcount" style="color:var(--faint);font-size:12px"></span>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>Franchisee</th>
+          <th>Manager</th>
+          <th>Tranche</th>
+          <th>Sale #</th>
+          <th>Amount</th>
+          <th>Release date</th>
+          <th>Status</th>
+          <th>Paid</th>
+        </tr></thead>
+        <tbody id="incTbody"></tbody>
+      </table>
+      <div class="empty" id="incEmptyState" style="display:none">
+        <b>No incentive payouts to show</b>
+        These appear once a franchisee's agreement amount is collected within the qualifying window.
+      </div>
+    </div>
   </div>
 </div>
 
@@ -337,8 +418,9 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
     </div>
     <div class="grid2">
       <div class="fld"><label>Lead source</label><select id="aSource"></select></div>
-      <div class="fld" id="aSourceOtherWrap" style="display:none"><label>Specify source</label><input id="aSourceOther" placeholder="Type the source"></div>
+      <div class="fld"><label>Lead generation date</label><input type="date" id="aLeadDate"></div>
     </div>
+    <div class="fld" id="aSourceOtherWrap" style="display:none"><label>Specify source</label><input id="aSourceOther" placeholder="Type the source"></div>
     <div class="mfoot">
       <button class="btn ghost" id="aCancel">Cancel</button>
       <button class="btn primary" id="aSave">Add franchisee</button>
@@ -356,7 +438,7 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
       <div class="fld"><label>Unit franchise cost (₹, before GST)</label><input class="num" id="sUnit" type="number"></div>
     </div>
     <div class="grid2">
-      <div class="fld"><label>FICO franchise cost (₹, before GST)</label><input class="num" id="sFico" type="number"></div>
+      <div class="fld"><label>FICO franchise cost (₹, all-inclusive — no GST added on top)</label><input class="num" id="sFico" type="number"></div>
       <div class="fld"></div>
     </div>
     <div class="sect-divider">Brochure links (used in internal emails)</div>
@@ -368,6 +450,11 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
     <div class="fld"><label>Legal responses link (added to the Legal agreement email)</label><input id="sLegalResp" placeholder="https://…/responses-sheet"></div>
     <div class="sect-divider">Procurement email — extra CC</div>
     <div class="fld"><label>Extra CC emails for the Procurement/Ops email (comma separated)</label><input id="sOpsCc" placeholder="someone@safc.ltd, another@safc.ltd"></div>
+    <div class="sect-divider">Business Analyst / MIS — ERP ID creation</div>
+    <div class="grid2">
+      <div class="fld"><label>Business Analyst / MIS email</label><input id="sBaEmail" placeholder="mis@safc.ltd"></div>
+      <div class="fld"><label>Business Analyst / MIS WhatsApp number</label><input id="sBaPhone" placeholder="10-digit"></div>
+    </div>
     <div class="grid2">
       <div class="fld"><label>Token amount (₹)</label><input class="num" id="sToken" type="number"></div>
       <div class="fld"><label>Agreement amount, total (₹)</label><input class="num" id="sAgree" type="number"></div>
@@ -475,7 +562,7 @@ let SB_OK=false, SB_LAST_ERR='';
 // The app uses camelCase internally; the Supabase columns are all lowercase.
 const SB_FIELD_MAP={
   id:'id', name:'name', phone:'phone', email:'email', model:'model', fm:'fm',
-  state:'state', district:'district', source:'source',
+  state:'state', district:'district', source:'source', leadDate:'leaddate',
   tokenDate:'tokendate',
   loaDone:'loadone', loaDate:'loadate', loaNotified:'loanotified',
   meetingDone:'meetingdone', meetingDate:'meetingdate',
@@ -483,9 +570,18 @@ const SB_FIELD_MAP={
   refundDone:'refunddone', refundDate:'refunddate', refundNotified:'refundnotified',
   agreePaidDate:'agreepaiddate', agreementNotified:'agreementnotified',
   agreeDone:'agreedone', agreeDate:'agreedate',
-  agreePayments:'agreepayments', careNotifiedAgree:'carenotifiedagree', agreeFormNotified:'agreeformnotified',
+  agreePayments:'agreepayments', careNotifiedAgree:'carenotifiedagree', agreeFormNotified:'agreeformnotified', baNotified:'banotified',
   careNotified:'carenotified',
-  payments:'payments', fullPaidDate:'fullpaiddate'
+  payments:'payments', fullPaidDate:'fullpaiddate',
+  cancelled:'cancelled', cancelDate:'canceldate', cancelReason:'cancelreason', cancelRefunded:'cancelrefunded', cancelRefundDate:'cancelrefunddate',
+  loiIncentivePaid:'loiincentivepaid', loiIncentivePaidDate:'loiincentivepaiddate', openingIncentivePaid:'openingincentivepaid', openingIncentivePaidDate:'openingincentivepaiddate',
+  agreeIncentiveOverride:'agreeincentiveoverride', agreeIncentiveOverrideMonth:'agreeincentiveoverridemonth', openIncentiveOverride:'openincentiveoverride',
+  agreeIncentiveDeducted:'agreeincentivededucted', agreeIncentiveDeductedDate:'agreeincentivededucteddate', openIncentiveDeducted:'openincentivededucted', openIncentiveDeductedDate:'openincentivededucteddate',
+  agreementIssued:'agreementissued', agreementIssuedDate:'agreementissueddate', custAgreeRecdNotified:'custagreerecdnotified',
+  contactFormSent:'contactformsent', contactFormSentDate:'contactformsentdate',
+  contactFormFilled:'contactformfilled', contactFormFilledDate:'contactformfilleddate',
+  misContactCreated:'miscontactcreated', misContactCreatedDate:'miscontactcreateddate',
+  loiSigned:'loisigned', loiSignedDate:'loisigneddate'
 };
 const SB_ROW_TO_APP=Object.fromEntries(Object.entries(SB_FIELD_MAP).map(([app,db])=>[db,app]));
 
@@ -542,7 +638,7 @@ async function sbLoadSettings(){
 }
 async function sbSaveSettings(cfg){
   const row={ id:1,
-    mastercost:cfg.masterCost, unitcost:cfg.unitCost, ficocost:cfg.ficoCost, brochureunit:cfg.brochureUnit||"", brochuremaster:cfg.brochureMaster||"", brochurefico:cfg.brochureFico||"", agreementformlink:cfg.agreementFormLink||"", legalresponseslink:cfg.legalResponsesLink||"", opsextracc:cfg.opsExtraCc||"", token:cfg.token, agreetotal:cfg.agreeTotal, gst:cfg.gst,
+    mastercost:cfg.masterCost, unitcost:cfg.unitCost, ficocost:cfg.ficoCost, brochureunit:cfg.brochureUnit||"", brochuremaster:cfg.brochureMaster||"", brochurefico:cfg.brochureFico||"", agreementformlink:cfg.agreementFormLink||"", legalresponseslink:cfg.legalResponsesLink||"", opsextracc:cfg.opsExtraCc||"", baemail:cfg.baEmail||"", baphone:cfg.baPhone||"", token:cfg.token, agreetotal:cfg.agreeTotal, gst:cfg.gst,
     win9:cfg.win9, win3:cfg.win3, win60:cfg.win60, winloa:cfg.winLoa, winrefund:cfg.winRefund,
     fms:cfg.fms||[], fmphones:cfg.fmPhones||{}, fmemails:cfg.fmEmails||{},
     financename:cfg.financeName||'', financeemail:cfg.financeEmail||'', financephone:cfg.financePhone||'',
@@ -558,7 +654,7 @@ async function sbSaveSettings(cfg){
 }
 function settingsRowToCfg(row){
   return {
-    masterCost:row.mastercost, unitCost:row.unitcost, ficoCost:row.ficocost||0, brochureUnit:row.brochureunit||"", brochureMaster:row.brochuremaster||"", brochureFico:row.brochurefico||"", agreementFormLink:row.agreementformlink||"", legalResponsesLink:row.legalresponseslink||"", opsExtraCc:row.opsextracc||"", token:row.token, agreeTotal:row.agreetotal, gst:row.gst,
+    masterCost:row.mastercost, unitCost:row.unitcost, ficoCost:row.ficocost||0, brochureUnit:row.brochureunit||"", brochureMaster:row.brochuremaster||"", brochureFico:row.brochurefico||"", agreementFormLink:row.agreementformlink||"", legalResponsesLink:row.legalresponseslink||"", opsExtraCc:row.opsextracc||"", baEmail:row.baemail||"", baPhone:row.baphone||"", token:row.token, agreeTotal:row.agreetotal, gst:row.gst,
     win9:row.win9, win3:row.win3, win60:row.win60, winLoa:row.winloa, winRefund:row.winrefund,
     fms:row.fms||[], fmPhones:row.fmphones||{}, fmEmails:row.fmemails||{},
     financeName:row.financename||'', financeEmail:row.financeemail||'', financePhone:row.financephone||'',
@@ -584,6 +680,7 @@ const DEFAULTS={
   agreementFormLink:'',      // Franchise Agreement Details Form — sent to FM once agreement amount is paid
   legalResponsesLink:'',     // Google Form/Sheet responses link — added to the Legal agreement email
   opsExtraCc:'',             // extra CC emails (comma separated) for the Procurement/Ops email
+  baEmail:'', baPhone:'',    // Business Analyst / MIS — ERP ID creation notification
   token:50000, agreeTotal:944000, gst:18,
   win9:9, win3:3, win60:60, winLoa:3, winRefund:7,
   fms:['Jeshwanth Kumar','Ram Kishore','Suresh N','Rajendra','Nikhil Rawat','Nikhil Ambhore','Sanjay'],
@@ -606,7 +703,9 @@ function fillDistrictSelect(sel,state,current){
 }
 let CFG={...DEFAULTS};
 let RECORDS=[];
-let view={model:'all',stage:'',fm:'',flag:'',source:'',q:''};
+let view={model:'all',stage:'',fm:'',flag:'',source:'',q:'',kpi:''};
+let currentView='fr';  // 'fr' = Franchisees, 'inc' = FM Incentive Payouts
+let incView={fm:'',status:''};
 let FLAGS_COLLAPSED=true;  // escalation panel starts collapsed
 // Drawer section open/closed state. Defaults come from current stage each render,
 // but once the person manually opens/closes a section, that choice is remembered.
@@ -670,29 +769,169 @@ function loiIncentiveState(r){
   if(!r.tokenDate) return {status:'na',text:'—',cls:'c-grey'};
   if(r.decision==='Rejected') return {status:'na',text:'Rejected — n/a',cls:'c-grey'};
   const tok=parseD(r.tokenDate);
-  if(r.loaDone && r.loaDate){
-    const loi=parseD(r.loaDate);
-    const days=diffDays(tok,loi);
-    if(days<=3) return {status:'earned',text:'Earned — signed day '+days,cls:'c-green'};
-    return {status:'forfeited',text:'Forfeited — signed day '+days+' (>3)',cls:'c-red'};
+  const agDateStr=agreeCompletedDate(r);
+  if(agDateStr){
+    const ag=parseD(agDateStr);
+    const days=diffDays(tok,ag);
+    if(days<=10) return {status:'earned',text:'Earned — agreement paid day '+days,cls:'c-green'};
+    return {status:'forfeited',text:'Forfeited — agreement paid day '+days+' (>10)',cls:'c-red'};
   }
   const elapsed=diffDays(tok,today());
-  if(elapsed<=3) return {status:'pending',text:'Pending — '+(3-elapsed)+' day(s) left to sign LOI',cls:'c-amber'};
-  return {status:'forfeited',text:'Forfeited — LOI not signed within 3 days',cls:'c-red'};
+  if(elapsed<=10) return {status:'pending',text:'Pending — '+(10-elapsed)+' day(s) left to collect agreement amount',cls:'c-amber'};
+  return {status:'forfeited',text:'Forfeited — agreement amount not collected within 10 days',cls:'c-red'};
 }
 function openingIncentiveState(r){
-  if(!r.loaDone || !r.loaDate) return {status:'na',text:'Starts once LOI is signed',cls:'c-grey'};
+  const agDateStr=agreeCompletedDate(r);
+  if(!agDateStr) return {status:'na',text:'Starts once agreement amount is collected',cls:'c-grey'};
   if(r.decision==='Rejected') return {status:'na',text:'Rejected — n/a',cls:'c-grey'};
-  const loi=parseD(r.loaDate);
+  const ag=parseD(agDateStr);
   if(balance(r)<=0 && r.fullPaidDate){
     const paid=parseD(r.fullPaidDate);
-    const days=diffDays(loi,paid);
+    const days=diffDays(ag,paid);
     if(days<=60) return {status:'earned',text:'Earned — paid day '+days+' of 60',cls:'c-green'};
     return {status:'forfeited',text:'Forfeited — paid day '+days+' (>60)',cls:'c-red'};
   }
-  const elapsed=diffDays(loi,today());
+  const elapsed=diffDays(ag,today());
   if(elapsed<=60) return {status:'pending',text:'Pending — '+(60-elapsed)+' day(s) left',cls:'c-amber'};
-  return {status:'forfeited',text:'Forfeited — full payment not received within 60 days of LOI',cls:'c-red'};
+  return {status:'forfeited',text:'Forfeited — full payment not received within 60 days of the agreement amount',cls:'c-red'};
+}
+
+/* =========================================================
+   FM INCENTIVE PAYOUT CALCULATOR — per Franchise_Manager_Incentive.docx
+   - LOI tranche: qualifies when the LOI is signed within 2 days of the token
+     payment (Rule 1). Amount follows the monthly slab (1st sale that FM
+     closes that month = ₹5k, 2nd = ₹10k, 3rd = ₹15k, 4th and every sale
+     after = ₹20k — uncapped, so a 5th/6th/etc. sale keeps adding ₹40k each,
+     matching the "₹1,00,000+" cumulative shown for 4th & above in the
+     policy table). Order/tier is based on LOI-signing date within the month.
+     Release date = the 15th of the month AFTER the LOI was signed.
+   - Opening tranche: qualifies when the full amount is collected within 60
+     days of the LOI SIGNING date (Rule 2 — not the agreement-amount date).
+     Same tier amount as the LOI tranche. Release date = 15th, exactly 2
+     months after the LOI tranche's release date (fixed offset, regardless
+     of which day within the 60-day window the full payment actually landed).
+   - If either qualifying condition is missed, that tranche is forfeited —
+     no release is scheduled for it.
+   - Not yet modelled here: Zero Month Compensation (Rule/Table 2), Quarterly
+     Bonus, and the PIP warning ladder — those need month-by-month history
+     across the whole year per FM, which is a separate, larger build.
+   ========================================================= */
+const INCENTIVE_SLAB=[[5000,5000],[10000,10000],[15000,15000],[20000,20000]]; // [LOI,Opening] by tier index (0=1st sale/month, index 3 = 4th & every sale after)
+function the15th(year,monthIndex0){ return new Date(year,monthIndex0,15); }
+
+function computeIncentivePayouts(){
+  // A "sale" enters the monthly slab once the agreement amount (₹9,44,000) is
+  // actually collected — that's the qualifying event, not LOI signing. The
+  // incentive is only PAID if that collection happened within 10 days of the
+  // token payment; a delayed agreement payment forfeits that sale's incentive
+  // UNLESS a manager has explicitly overridden it (r.agreeIncentiveOverride) —
+  // e.g. a "warning case" where the sale is still credited toward the slab.
+  // Cancelled franchises stay in the slab-position count (the sale did happen),
+  // but instead of a normal payout row they get a "cancelled" (nothing paid yet)
+  // or a "Deduction" row (money already paid must be clawed back next month).
+  const sales=RECORDS.filter(r=>r.decision!=='Rejected' && r.tokenDate && agreeCompletedDate(r));
+
+  // group by FM + slab month. Normally the agreement-collection month, but a
+  // manager can force a sale into a different month via agreeIncentiveOverrideMonth
+  // (e.g. crediting a late payment back to the month the deal was really closed).
+  const groups={};
+  sales.forEach(r=>{
+    const ag=parseD(agreeCompletedDate(r));
+    const monthKey = r.agreeIncentiveOverrideMonth || (ag.getFullYear()+'-'+String(ag.getMonth()+1).padStart(2,'0'));
+    const key=(r.fm||'Unassigned')+'|'+monthKey;
+    (groups[key]=groups[key]||[]).push(r);
+  });
+
+  // Next payout cycle (15th) strictly after a given date — used to schedule clawbacks.
+  function nextPayoutDate(fromDate){
+    let y=fromDate.getFullYear(), m=fromDate.getMonth();
+    let candidate=the15th(y,m);
+    if(candidate<=fromDate) candidate=the15th(y,m+1);
+    return candidate;
+  }
+
+  const rows=[];
+  Object.values(groups).forEach(list=>{
+    list.sort((a,b)=>parseD(agreeCompletedDate(a))-parseD(agreeCompletedDate(b)));
+    list.forEach((r,idx)=>{
+      const tierIdx=Math.min(idx,INCENTIVE_SLAB.length-1);
+      const [agAmt,openAmt]=INCENTIVE_SLAB[tierIdx];
+      const ag=parseD(agreeCompletedDate(r));
+      // release date is based on the slab month (which may be overridden), not always the raw agreement date
+      const slabMonthDate = r.agreeIncentiveOverrideMonth ? parseD(r.agreeIncentiveOverrideMonth+'-15') : ag;
+      const agRelease=the15th(slabMonthDate.getFullYear(),slabMonthDate.getMonth()+1);
+      const openRelease=the15th(agRelease.getFullYear(),agRelease.getMonth()+2);
+      const clawbackDate=nextPayoutDate(parseD(r.cancelDate)||today());
+
+      // --- Agreement tranche ---
+      if(r.cancelled && r.loiIncentivePaid){
+        // already paid out, franchise since cancelled — claw back next cycle
+        rows.push({
+          recordId:r.id, name:r.name, fm:r.fm||'Unassigned', model:r.model, district:r.district||'', tranche:'Agreement',
+          tier:idx+1, amount:-agAmt, releaseDate:clawbackDate,
+          status: r.agreeIncentiveDeducted ? 'deducted' : 'deduct-due',
+          isDeduction:true, paid:!!r.agreeIncentiveDeducted, paidDate:r.agreeIncentiveDeductedDate||null
+        });
+      } else if(r.cancelled){
+        // cancelled before this was ever paid — nothing owed, shown for visibility only
+        rows.push({
+          recordId:r.id, name:r.name, fm:r.fm||'Unassigned', model:r.model, district:r.district||'', tranche:'Agreement',
+          tier:idx+1, amount:agAmt, releaseDate:agRelease, status:'cancelled',
+          paid:false, paidDate:null
+        });
+      } else {
+        const daysToAgree=diffDays(parseD(r.tokenDate),ag);
+        let agStatus;
+        if(daysToAgree>10 && !r.agreeIncentiveOverride) agStatus='forfeited';
+        else if(r.loiIncentivePaid) agStatus='paid';
+        else agStatus = today()>=agRelease ? 'due' : 'scheduled';
+        rows.push({
+          recordId:r.id, name:r.name, fm:r.fm||'Unassigned', model:r.model, district:r.district||'', tranche:'Agreement',
+          tier:idx+1, amount:agAmt, releaseDate:agRelease, status:agStatus, daysToQualify:daysToAgree,
+          overridden:!!r.agreeIncentiveOverride, overrideEligible:(daysToAgree>10),
+          paid:!!r.loiIncentivePaid, paidDate:r.loiIncentivePaidDate||null
+        });
+      }
+
+      // --- Opening tranche ---
+      if(r.cancelled && r.openingIncentivePaid){
+        rows.push({
+          recordId:r.id, name:r.name, fm:r.fm||'Unassigned', model:r.model, district:r.district||'', tranche:'Opening',
+          tier:idx+1, amount:-openAmt, releaseDate:clawbackDate,
+          status: r.openIncentiveDeducted ? 'deducted' : 'deduct-due',
+          isDeduction:true, paid:!!r.openIncentiveDeducted, paidDate:r.openIncentiveDeductedDate||null
+        });
+      } else if(r.cancelled){
+        rows.push({
+          recordId:r.id, name:r.name, fm:r.fm||'Unassigned', model:r.model, district:r.district||'', tranche:'Opening',
+          tier:idx+1, amount:openAmt, releaseDate:openRelease, status:'cancelled',
+          paid:false, paidDate:null
+        });
+      } else {
+        let openStatus, openPaid=!!r.openingIncentivePaid, openPaidDate=r.openingIncentivePaidDate||null;
+        let openOverrideEligible=false;
+        if(balance(r)<=0 && r.fullPaidDate){
+          const daysToFull=diffDays(ag,parseD(r.fullPaidDate));
+          openOverrideEligible = daysToFull>60;
+          if(daysToFull>60 && !r.openIncentiveOverride) openStatus='forfeited';
+          else if(r.openingIncentivePaid) openStatus='paid';
+          else openStatus = today()>=openRelease ? 'due' : 'scheduled';
+        } else if(diffDays(ag,today())>60){
+          openOverrideEligible = !r.openIncentiveOverride;
+          openStatus = r.openIncentiveOverride ? (today()>=openRelease?'due':'scheduled') : 'awaiting-forfeit';
+        } else {
+          openStatus='awaiting-payment';
+        }
+        rows.push({
+          recordId:r.id, name:r.name, fm:r.fm||'Unassigned', model:r.model, district:r.district||'', tranche:'Opening',
+          tier:idx+1, amount:openAmt, releaseDate:openRelease, status:openStatus,
+          overridden:!!r.openIncentiveOverride, overrideEligible:openOverrideEligible,
+          paid:openPaid, paidDate:openPaidDate
+        });
+      }
+    });
+  });
+  return rows;
 }
 const fmtD=s=>{const d=parseD(s);if(!d)return '—';const dd=String(d.getDate()).padStart(2,'0');const mm=String(d.getMonth()+1).padStart(2,'0');return dd+'/'+mm+'/'+d.getFullYear();};
 const fmtDlong=dl=>{if(!dl)return '';const dd=String(dl.getDate()).padStart(2,'0');const mm=String(dl.getMonth()+1).padStart(2,'0');return dd+'/'+mm+'/'+dl.getFullYear();};
@@ -702,7 +941,8 @@ const uid=()=>'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 function totalCost(r){
-  const base = r.model==='Master'?CFG.masterCost : r.model==='FICO'?(CFG.ficoCost||0) : CFG.unitCost;
+  if(r.model==='FICO') return CFG.ficoCost||0; // FICO price is already all-inclusive — no GST added on top
+  const base = r.model==='Master'?CFG.masterCost:CFG.unitCost;
   return base*(1+CFG.gst/100);
 }
 function brochureFor(r){
@@ -794,29 +1034,50 @@ function derive(r){
   const rj=parseD(r.decisionDate);
   d.dlRef= (r.decision==='Rejected'&&rj)?addDays(rj,CFG.winRefund):null;
 
+  // New front-of-funnel SLAs: get contact details (24h/1 day of token), create ERP
+  // contact (same day the form is filled — 2 hours isn't meaningful at day precision,
+  // so this is tracked as "due same day"), hold the eligibility meeting (24h/1 day
+  // of the LOI being signed back).
+  const loiSignedDate=parseD(r.loiSignedDate);
+  d.dlForm = t?addDays(t,1):null;
+  d.dlMis  = r.contactFormFilled&&r.contactFormFilledDate ? addDays(parseD(r.contactFormFilledDate),0) : null;
+  d.dlMeet = r.loiSigned&&loiSignedDate ? addDays(loiSignedDate,1) : null;
+
+  d.form  = d.dlForm?clock(d.dlForm,r.contactFormFilled?(r.contactFormFilledDate||r.tokenDate):null):null;
+  d.mis   = d.dlMis?clock(d.dlMis,r.misContactCreated?(r.misContactCreatedDate||r.contactFormFilledDate):null):null;
   d.loa   = d.dlLoa?clock(d.dlLoa,r.loaDone?(r.loaDate||r.tokenDate):null):null;
+  d.meet  = d.dlMeet?clock(d.dlMeet,r.meetingDone?(r.meetingDate||r.loiSignedDate):null):null;
   d.nine  = (d.dl9 && r.decision!=='Rejected')?clock(d.dl9, agDone?agDate:null):null;
   d.three = d.dl3?clock(d.dl3,r.agreeDone?(r.agreeDate||agDate):null):null;
   d.sixty = (d.dl60 && r.decision!=='Rejected')?clock(d.dl60,balance(r)<=0?(r.fullPaidDate||agDate):null):null;
   d.refund= d.dlRef?clock(d.dlRef,r.refundDone?(r.refundDate||r.decisionDate):null):null;
 
-  // stage
-  if(r.decision==='Rejected') d.stage=r.refundDone?'Refund done':'Rejected — refund';
-  else if(!r.meetingDone)     d.stage='Token paid';
-  else if(!r.decision)        d.stage='Eligibility review';
-  else if(!agDone)            d.stage='Agreement amount due';
-  else if(!r.agreeDone)       d.stage='Agreement pending';
-  else if(balance(r)>0)       d.stage='Balance due';
-  else                        d.stage='Completed';
+  // stage — Token paid → contact form → ERP contact → LOI issued → LOI signed →
+  // eligibility meeting → founder decision → agreement amount → agreement handover →
+  // balance → completed. (Unchanged from "agreement amount due" onward.)
+  if(r.cancelled)                  d.stage='Cancelled';
+  else if(r.decision==='Rejected') d.stage=r.refundDone?'Refund done':'Rejected — refund';
+  else if(!r.contactFormFilled)    d.stage='Token paid';
+  else if(!r.misContactCreated)    d.stage='ERP contact pending';
+  else if(!r.loaDone)              d.stage='LOI pending';
+  else if(!r.loiSigned)            d.stage='LOI sent';
+  else if(!r.meetingDone)          d.stage='Meeting pending';
+  else if(!r.decision)             d.stage='Eligibility review';
+  else if(!agDone)                 d.stage='Agreement amount due';
+  else if(!r.agreeDone)            d.stage='Agreement pending';
+  else if(balance(r)>0)            d.stage='Balance due';
+  else                             d.stage='Completed';
 
   // flags
   d.flags=[];
+  if(d.form  && d.form.state==='overdue')  d.flags.push('Contact details not collected — '+Math.abs(d.form.left)+' days past the 24-hour window');
+  if(d.mis   && d.mis.state==='overdue')   d.flags.push('ERP contact not created — '+Math.abs(d.mis.left)+' days past the same-day target');
+  if(d.meet  && d.meet.state==='overdue')  d.flags.push('Eligibility meeting not held — '+Math.abs(d.meet.left)+' days past the 24-hour window since LOI was signed');
   if(d.nine  && d.nine.state==='overdue')  d.flags.push('Agreement amount ('+inrShort(CFG.agreeTotal-CFG.token)+') overdue by '+Math.abs(d.nine.left)+' days');
   if(d.three && d.three.state==='overdue') d.flags.push('Agreement not handed over — '+Math.abs(d.three.left)+' days past the 3-day window');
   if(d.sixty && d.sixty.state==='overdue') d.flags.push('Full franchise amount overdue by '+Math.abs(d.sixty.left)+' days · '+inrShort(balance(r))+' pending');
   if(d.loa   && d.loa.state==='overdue')   d.flags.push('LOI not issued — '+Math.abs(d.loa.left)+' days past token payment');
   if(d.refund&& d.refund.state==='overdue')d.flags.push('₹50,000 refund not processed — '+Math.abs(d.refund.left)+' days overdue');
-  if(!r.meetingDone && t && diffDays(today(),addDays(t,CFG.win9))<0) d.flags.push('Eligibility meeting still not held');
   if(r.meetingDone && !r.decision && r.meetingDate && diffDays(parseD(r.meetingDate),today())>3) d.flags.push("Founder's decision pending for "+diffDays(parseD(r.meetingDate),today())+' days');
 
   // ---- plain-language "what to do next" (one line, non-technical) ----
@@ -824,10 +1085,18 @@ function derive(r){
   if(r.decision==='Rejected'){
     d.next = r.refundDone ? na('Done — token refunded, case closed','done')
            : na('Refund the ₹'+CFG.token.toLocaleString('en-IN')+' token','warn');
+  } else if(!r.contactFormFilled){
+    d.next = d.form && d.form.state==='overdue' ? na('Get contact details — overdue','warn') : na('Get contact details from the franchisee','go');
+  } else if(!r.misContactCreated){
+    d.next = d.mis && d.mis.state==='overdue' ? na('Create ERP contact — overdue','warn') : na('Create the ERP contact','go');
   } else if(!r.loaDone && d.loa && d.loa.state==='overdue'){
     d.next = na('Issue the LOI now — it is overdue','warn');
+  } else if(!r.loaDone){
+    d.next = na('Issue the LOI','go');
+  } else if(!r.loiSigned){
+    d.next = na('Awaiting the client\'s signed LOI','wait');
   } else if(!r.meetingDone){
-    d.next = na('Hold the eligibility meeting','go');
+    d.next = d.meet && d.meet.state==='overdue' ? na('Hold the eligibility meeting — overdue','warn') : na('Hold the eligibility meeting','go');
   } else if(!r.decision){
     d.next = na("Get the founder's decision (select / reject)",'wait');
   } else if(!agDone){
@@ -1242,7 +1511,7 @@ function emailOpen(r){
 function loaSubject(r){ return 'Action: Issue LOI — '+r.name+' ('+r.model+' Franchise, '+(r.district||'district TBD')+')'; }
 function loaBody(r){
   return `Hi Finance Team,\n\n`+
-`The following franchisee has paid the ₹${CFG.token.toLocaleString('en-IN')} token. Please issue the Letter of Intent (LOI).\n\n`+
+`The following franchisee has paid the ₹${CFG.token.toLocaleString('en-IN')} token and their contact has been created. Please issue the Letter of Intent (LOI) and book the zone/territory for this franchisee.\n\n`+
 `Franchisee     : ${r.name}\n`+
 `Contact number : ${r.phone||'—'}\n`+
 `Email          : ${r.email||'—'}\n`+
@@ -1250,10 +1519,29 @@ function loaBody(r){
 `Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
 `Token paid on  : ${fmtD(r.tokenDate)}\n`+
 `Franchise mgr  : ${r.fm||'—'}\n\n`+
-`Please share the LOI with the franchisee at the earliest.\n\nThanks.`;
+`Please share the LOI with the franchisee, and book/reserve their zone, at the earliest.\n\nThanks.`;
 }
 function loaBodyShort(r){
   return `Hi Finance Team,\n\n${r.name} paid the ₹${CFG.token.toLocaleString('en-IN')} token (${r.model}). Please issue the LOI.\n\n[Full details copied to your clipboard — paste below]\n\nThanks.`;
+}
+
+/* ---- Contact details form to FM — fires as soon as token is paid ---- */
+function contactFormSubject(r){ return 'Action: Get contact details — '+r.name; }
+function contactFormBody(r){
+  return `Hi ${r.fm||'Team'},\n\n`+
+`${r.name} (${r.model} Franchise${r.district?', '+r.district:''}) has paid the ₹${CFG.token.toLocaleString('en-IN')} token. Please get their contact details from them within 24 hours so we can create their contact/ID in ERP.\n\n`+
+`Contact number: ${r.phone||'—'}\n`+
+`Token paid on : ${fmtD(r.tokenDate)}\n\nThanks.`;
+}
+function sendContactFormEmail(r){
+  const to=fmEmail(r.fm);
+  if(!to){ toast('No email saved for '+(r.fm||'this FM')+' — add it in Settings > FM phone book.'); return; }
+  mailto(to, contactFormSubject(r), contactFormBody(r), CFG.ccEmail||'');
+}
+function sendContactFormWa(r){
+  const num=waNumber(fmPhone(r.fm));
+  if(!num){ toast('No WhatsApp number saved for '+(r.fm||'this FM')+' — add it in Settings > FM phone book.'); return; }
+  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(contactFormBody(r)),'_blank');
 }
 function refundSubject(r){ return 'Action: Process refund — '+r.name+' ('+r.model+' Franchise)'; }
 function refundBody(r){
@@ -1303,29 +1591,50 @@ function careMeetBodyShort(r){
   return `Hi Franchisee Care,\n\n${r.name} has paid the agreement amount (${r.model}). Please schedule the onboarding meet.\n\n[Full details copied to your clipboard — paste below]\n\nThanks.`;
 }
 // Message to the franchisee at agreement-complete: agreement coming + onboarding meet
-function custAgreeSubject(r){ return 'Mr GoliSoda '+r.model+' Franchise — Agreement & onboarding meet'; }
-function custAgreeBody(r){
+// (1) Fires as soon as the agreement amount is paid — a simple acknowledgment.
+function custAgreeRecdSubject(r){ return 'Mr GoliSoda '+r.model+' Franchise — Agreement amount received'; }
+function custAgreeRecdBody(r){
   const nm=r.name||'there';
-  return `Dear ${nm},\n\nThank you — your full agreement amount of ₹${CFG.agreeTotal.toLocaleString('en-IN')} is received. Congratulations!\n\nTwo things are now in progress:\n1. Your franchise agreement is being prepared and will be shared with you within ${CFG.win3} days.\n2. Our Franchisee Care team will connect with you to arrange your onboarding meet.\n\nCould you please share a couple of convenient time slots for the onboarding meet? We look forward to getting you started.`;
+  return `Dear ${nm},\n\nThank you — your full agreement amount of ₹${CFG.agreeTotal.toLocaleString('en-IN')} is received. Congratulations!\n\nYour franchise agreement is being prepared and you will be receiving it by mail soon.`;
 }
-function custAgreeWaText(r){
+function custAgreeRecdWaText(r){
   const nm=r.name||'there';
-  return `Hi ${nm}, your full ₹${CFG.agreeTotal.toLocaleString('en-IN')} agreement amount is received — congratulations! Your agreement will be shared within ${CFG.win3} days, and our team will connect for your onboarding meet. Could you share a couple of convenient time slots?`;
+  return `Hi ${nm}, your full ₹${CFG.agreeTotal.toLocaleString('en-IN')} agreement amount is received — congratulations! Your agreement is being prepared and you will be receiving it soon.`;
+}
+function custAgreeRecdEmail(r){
+  if(!r.email){ toast('No email saved for '+r.name+'.'); return; }
+  mailto(r.email,custAgreeRecdSubject(r),custAgreeRecdBody(r),ccFor(r));
+}
+function custAgreeRecdWa(r){
+  const num=waNumber(r.phone);
+  if(!num){ toast('No valid WhatsApp number for '+r.name+'.'); return; }
+  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(custAgreeRecdWaText(r)),'_blank');
+}
+
+// (2) Fires only once Legal has confirmed the agreement is actually issued.
+function custAgreeSignSubject(r){ return 'Mr GoliSoda '+r.model+' Franchise — Please sign your agreement'; }
+function custAgreeSignBody(r){
+  const nm=r.name||'there';
+  return `Dear ${nm},\n\nYou have been issued your Mr GoliSoda ${r.model} Franchise agreement. Kindly sign the agreement and revert back to us at the earliest so we can proceed with your onboarding.`;
+}
+function custAgreeSignWaText(r){
+  const nm=r.name||'there';
+  return `Hi ${nm}, you have been issued your Mr GoliSoda ${r.model} Franchise agreement. Kindly sign and revert back to us at the earliest so we can proceed with your onboarding.`;
+}
+function custAgreeSignEmail(r){
+  if(!r.email){ toast('No email saved for '+r.name+'.'); return; }
+  mailto(r.email,custAgreeSignSubject(r),custAgreeSignBody(r),ccFor(r));
+}
+function custAgreeSignWa(r){
+  const num=waNumber(r.phone);
+  if(!num){ toast('No valid WhatsApp number for '+r.name+'.'); return; }
+  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(custAgreeSignWaText(r)),'_blank');
 }
 function notifyCareMeetEmail(r){ mailto('customersuccess@safc.ltd',careMeetSubject(r),careMeetBody(r),ccFor(r)); }
 function notifyCareMeetWa(r){
   const num=waNumber(CFG.carePhone);
   if(!num){ toast('Add the Franchisee Care WhatsApp number in Settings first.'); return; }
   window.open('https://wa.me/'+num+'?text='+encodeURIComponent(careMeetBody(r)),'_blank');
-}
-function custAgreeEmail(r){
-  if(!r.email){ toast('No email saved for '+r.name+'.'); return; }
-  mailto(r.email,custAgreeSubject(r),custAgreeBody(r),ccFor(r));
-}
-function custAgreeWa(r){
-  const num=waNumber(r.phone);
-  if(!num){ toast('No valid WhatsApp number for '+r.name+'.'); return; }
-  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(custAgreeWaText(r)),'_blank');
 }
 function agreementFormSubject(r){ return 'Agreement details form — '+r.name; }
 function agreementFormBody(r){
@@ -1343,6 +1652,30 @@ function sendAgreementFormEmail(r){
   const to=fmEmail(r.fm);
   if(!to){ toast('No email saved for '+(r.fm||'this FM')+' — add it in Settings > FM phone book.'); return; }
   mailto(to, agreementFormSubject(r), agreementFormBody(r), CFG.ccEmail||'');
+}
+function sendAgreementFormWa(r){
+  const num=waNumber(fmPhone(r.fm));
+  if(!num){ toast('No WhatsApp number saved for '+(r.fm||'this FM')+' — add it in Settings > FM phone book.'); return; }
+  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(agreementFormBody(r)),'_blank');
+}
+
+/* ---- Business Analyst / MIS: create ID in ERP once agreement amount is paid ---- */
+function baSubject(r){ return 'ERP ID creation — '+r.name; }
+function baBody(r){
+  return `Hi,\n\n`+
+`${r.name}'s (${r.model} Franchise${r.district?', '+r.district:''}) contact details have been received. Please create their contact/ID in ERP so we can proceed with the LOI.\n\n`+
+`Franchisee    : ${r.name}\n`+
+`Contact number: ${r.phone||'—'}\n`+
+`Franchise mgr : ${r.fm||'—'}\n\nThanks.`;
+}
+function sendBaEmail(r){
+  if(!CFG.baEmail){ toast('Add the Business Analyst / MIS email in Settings first.'); return; }
+  mailto(CFG.baEmail, baSubject(r), baBody(r), CFG.ccEmail||'');
+}
+function sendBaWa(r){
+  const num=waNumber(CFG.baPhone);
+  if(!num){ toast('Add the Business Analyst / MIS WhatsApp number in Settings first.'); return; }
+  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(baBody(r)),'_blank');
 }
 function agreementSubject(r){ return 'Action: Prepare Agreement — '+r.name+' ('+r.model+' Franchise, '+(r.district||'district TBD')+')'; }
 function agreementBody(r){
@@ -1429,14 +1762,21 @@ function filtered(){
   return RECORDS.filter(r=>{
     const d=derive(r);
     if(view.model!=='all'&&r.model!==view.model) return false;
-    if(view.stage==='LOI pending'){
-      // token paid, not rejected, LOI not yet issued
-      if(r.loaDone || r.decision==='Rejected' || !r.tokenDate) return false;
-    } else if(view.stage&&d.stage!==view.stage) return false;
+    if(view.stage&&d.stage!==view.stage) return false;
     if(view.fm&&r.fm!==view.fm) return false;
     if(view.source&&(r.source||'')!==view.source) return false;
     if(view.flag==='red'&&!d.flags.length) return false;
     if(view.flag==='clean'&&d.flags.length) return false;
+    if(view.flag==='ceo'){
+      const rm=reminderState(r);
+      if(rm.agreeEscalate===null && rm.fullEscalate===null) return false;
+    }
+    if(view.kpi==='tracked' && (d.stage==='Refund done'||d.stage==='Cancelled')) return false;
+    if(view.kpi==='awaiting' && !['Token paid','ERP contact pending','LOI pending','LOI sent','Meeting pending','Eligibility review'].includes(d.stage)) return false;
+    if(view.kpi==='flags' && !d.flags.length) return false;
+    if(view.kpi==='refunddue' && !(r.decision==='Rejected'&&!r.refundDone)) return false;
+    if(view.kpi==='completed' && d.stage!=='Completed') return false;
+    if(view.kpi==='cancelled' && d.stage!=='Cancelled') return false;
     if(view.q){
       const q=view.q.toLowerCase();
       if(!(String(r.name||'').toLowerCase().includes(q)||String(r.phone||'').includes(q))) return false;
@@ -1457,25 +1797,28 @@ function kpiScope(){
 function renderKPIs(){
   const scope=kpiScope();
   const rs=scope.map(r=>({r,d:derive(r)}));
-  const active=rs.filter(x=>x.d.stage!=='Refund done');
+  const active=rs.filter(x=>x.d.stage!=='Refund done'&&x.d.stage!=='Cancelled');
   const flagged=rs.filter(x=>x.d.flags.length);
   const coll=rs.reduce((s,x)=>s+collected(x.r),0);
-  const bal=rs.filter(x=>x.r.decision!=='Rejected').reduce((s,x)=>s+balance(x.r),0);
+  const bal=rs.filter(x=>x.r.decision!=='Rejected'&&!x.r.cancelled).reduce((s,x)=>s+balance(x.r),0);
   const refundDue=rs.filter(x=>x.r.decision==='Rejected'&&!x.r.refundDone).length;
-  const inReview=rs.filter(x=>x.d.stage==='Eligibility review'||x.d.stage==='Token paid').length;
+  const inReview=rs.filter(x=>['Token paid','ERP contact pending','LOI pending','LOI sent','Meeting pending','Eligibility review'].includes(x.d.stage)).length;
   const done=rs.filter(x=>x.d.stage==='Completed').length;
+  const cancelled=rs.filter(x=>x.d.stage==='Cancelled');
+  const cancelledAmt=cancelled.reduce((s,x)=>s+collected(x.r),0);
   const who = view.fm ? view.fm : (view.model!=='all'?view.model+' model':'all managers');
   const K=[
-    ['Tracked',active.length,'live franchisees','' ],
-    ['Awaiting eligibility',inReview,'token paid, not cleared','gold'],
-    ['Red flags',flagged.length,'need escalation today',flagged.length?'bad':'good'],
-    ['Refund due',refundDue,'rejected, ₹50k pending',refundDue?'warn':'good'],
-    ['Collected',inrShort(coll),'for '+who,'good'],
-    ['Outstanding',inrShort(bal),'still to be received','warn'],
-    ['Completed',done,'full amount received','good'],
+    ['Tracked',active.length,'live franchisees','', 'tracked'],
+    ['Awaiting eligibility',inReview,'token paid, not cleared','gold', 'awaiting'],
+    ['Red flags',flagged.length,'need escalation today',flagged.length?'bad':'good', 'flags'],
+    ['Refund due',refundDue,'rejected, ₹50k pending',refundDue?'warn':'good', 'refunddue'],
+    ['Collected',inrShort(coll),'for '+who,'good', null],
+    ['Outstanding',inrShort(bal),'still to be received','warn', null],
+    ['Completed',done,'full amount received','good', 'completed'],
+    ['Cancelled',cancelled.length,cancelled.length?inr(cancelledAmt)+' collected':'none so far',cancelled.length?'warn':'good', 'cancelled'],
   ];
-  document.getElementById('kpis').innerHTML=K.map(([l,v,f,c])=>
-    `<div class="kpi ${c}"><div class="lb">${l}</div><div class="vl">${v}</div><div class="ft">${f}</div></div>`).join('');
+  document.getElementById('kpis').innerHTML=K.map(([l,v,f,c,kpiKey])=>
+    `<div class="kpi ${c}${kpiKey&&view.kpi===kpiKey?' active':''}"${kpiKey?` data-kpi="${kpiKey}"`:''}><div class="lb">${l}</div><div class="vl">${v}</div><div class="ft">${f}</div></div>`).join('');
 }
 
 function renderFlags(){
@@ -1510,6 +1853,8 @@ function nextReminderCell(r,d){
   if(rm.agreeEscalate!==null) return '<span class="chip c-red">🚨 Escalate CEO · agreement ovd '+rm.agreeEscalate+'d</span>';
   if(rm.fullDue.length) return '<span class="chip c-amber">⏰ FM reminder · full pay '+rm.fullDue[0].left+'d left</span>';
   if(rm.agreeDue!==null) return '<span class="chip c-amber">⏰ FM reminder · agreement '+rm.agreeDue+'d left</span>';
+  if(r.decision!=='Rejected' && !r.meetingDone) return '<span class="chip c-amber">📋 Hold eligibility meeting</span>';
+  if(r.decision!=='Rejected' && r.meetingDone && !r.decision) return '<span class="chip c-amber">⏳ Awaiting founder\'s decision</span>';
   // no formal reminder — surface the next operational action briefly
   if(d.next && d.next.tone==='warn') return '<span class="chip c-amber">'+esc(d.next.txt)+'</span>';
   return '<span style="color:var(--faint)">—</span>';
@@ -1522,8 +1867,17 @@ function renderTable(){
   document.getElementById('tbody').innerHTML=rows.map(r=>{
     const d=derive(r);
     const stageCls = d.stage==='Completed'?'c-green':d.stage.startsWith('Rejected')?'c-red':d.stage==='Refund done'?'c-grey':'c-blue';
-    return `<tr data-open="${r.id}" class="${d.flags.length?'hasflag':''}">
-      <td class="freeze freeze-1"><div class="nmcell">${esc(r.name)}<small>${esc(r.phone||'no number')}${r.district?' · '+esc(r.district):''}</small></div>
+    const rowHighlight = r.cancelled ? 'row-cancelled'
+      : (balance(r)<=0 && d.stage==='Completed') ? 'row-complete'
+      : (d.stage==='Agreement pending') ? 'row-pending'
+      : '';
+    return `<tr data-open="${r.id}" class="${d.flags.length?'hasflag':''} ${rowHighlight}">
+      <td class="freeze freeze-1"><div class="nmcell">${esc(r.name)}<small>${esc(r.phone||'no number')}${r.district?' · '+esc(r.district):''}${r.leadDate?' · lead '+fmtD(r.leadDate):''}</small></div>
+        <div class="paytags">
+          ${r.tokenDate?`<span class="paytag ta" title="Token advance · ${fmtD(r.tokenDate)}">TA ${fmtD(r.tokenDate)}</span>`:''}
+          ${agreeCompletedDate(r)?`<span class="paytag ag" title="Agreement amount · ${fmtD(agreeCompletedDate(r))}">AG ${fmtD(agreeCompletedDate(r))}</span>`:''}
+          ${r.fullPaidDate?`<span class="paytag fp" title="Full payment · ${fmtD(r.fullPaidDate)}">FP ${fmtD(r.fullPaidDate)}</span>`:''}
+        </div>
         <div class="rowbtns">
         ${waNumber(r.phone)?`<button class="wabtn" data-wa="${r.id}" title="WhatsApp reminder">WhatsApp</button>`:''}
         ${r.email?`<button class="mailbtn" data-mail="${r.id}" title="Email reminder">Email</button>`:''}
@@ -1537,7 +1891,126 @@ function renderTable(){
   }).join('');
 }
 
-function renderAll(){ renderKPIs(); renderFlags(); renderTable(); if(openId) renderDrawer(); }
+function renderAll(){ renderKPIs(); renderFlags(); renderTable(); if(openId) renderDrawer(); if(currentView==='inc') renderIncentives(); }
+
+function switchView(v){
+  currentView=v;
+  document.querySelectorAll('#viewTabs button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
+  document.getElementById('viewFranchisees').style.display = v==='fr' ? '' : 'none';
+  document.getElementById('viewIncentives').style.display = v==='inc' ? '' : 'none';
+  if(v==='inc') renderIncentives();
+}
+document.getElementById('viewTabs').addEventListener('click',e=>{
+  const b=e.target.closest('[data-view]'); if(!b) return;
+  switchView(b.dataset.view);
+});
+
+function incStatusLabel(s){
+  return {due:'Due now',scheduled:'Scheduled',paid:'Paid',forfeited:'Forfeited',
+          'awaiting-payment':'Awaiting full payment','awaiting-forfeit':'Overdue — likely forfeit',
+          cancelled:'Cancelled — nothing paid','deduct-due':'Deduct next cycle','deducted':'Deducted'}[s]||s;
+}
+function renderIncentives(){
+  const all=computeIncentivePayouts();
+  // populate FM filter options once
+  const fmSel=document.getElementById('incFM');
+  const fms=[...new Set(all.map(r=>r.fm))].sort();
+  const currentOpts=[...fmSel.options].map(o=>o.value).filter(Boolean).sort().join(',');
+  if(currentOpts!==fms.join(',')){
+    const keep=fmSel.value;
+    fmSel.innerHTML='<option value="">All managers</option>'+fms.map(f=>`<option>${esc(f)}</option>`).join('');
+    fmSel.value=fms.includes(keep)?keep:'';
+  }
+  let rows=all.filter(r=>{
+    if(incView.fm && r.fm!==incView.fm) return false;
+    if(incView.status && r.status!==incView.status) return false;
+    return true;
+  });
+  rows.sort((a,b)=>a.releaseDate-b.releaseDate);
+
+  const due=all.filter(r=>r.status==='due');
+  const scheduled=all.filter(r=>r.status==='scheduled');
+  const paid=all.filter(r=>r.status==='paid');
+  const forfeited=all.filter(r=>r.status==='forfeited'||r.status==='awaiting-forfeit');
+  const K=[
+    ['Due now',due.length,due.length?inr(due.reduce((s,x)=>s+x.amount,0))+' to release':'nothing due','warn'],
+    ['Scheduled',scheduled.length,scheduled.length?inr(scheduled.reduce((s,x)=>s+x.amount,0))+' upcoming':'none upcoming',''],
+    ['Paid',paid.length,inr(paid.reduce((s,x)=>s+x.amount,0))+' released','good'],
+    ['Forfeited',forfeited.length,forfeited.length?inr(forfeited.reduce((s,x)=>s+x.amount,0))+' missed':'none missed',forfeited.length?'bad':'good'],
+  ];
+  document.getElementById('incKpis').innerHTML=K.map(([l,v,f,c])=>
+    `<div class="kpi ${c}"><div class="lb">${l}</div><div class="vl">${v}</div><div class="ft">${f}</div></div>`).join('');
+
+  document.getElementById('incRowcount').textContent=rows.length+' of '+all.length;
+  document.getElementById('incEmptyState').style.display=rows.length?'none':'block';
+  document.getElementById('incTbody').innerHTML=rows.map(r=>{
+    const ordinal=r.tier+(r.tier===1?'st':r.tier===2?'nd':r.tier===3?'rd':'th');
+    const overrideField = r.tranche==='Agreement' ? 'agreeIncentiveOverride' : 'openIncentiveOverride';
+    const deductField = r.tranche==='Agreement' ? 'agreeIncentiveDeducted' : 'openIncentiveDeducted';
+    let actionCell;
+    if(r.status==='due'||r.status==='paid'||r.status==='scheduled'){
+      actionCell = `<label class="chk"><input type="checkbox" data-inc-paid="${r.recordId}" data-inc-tranche="${r.tranche}" ${r.paid?'checked':''}> ${r.paid?'Paid '+fmtD(r.paidDate):'Mark paid'}</label>`;
+    } else if(r.status==='forfeited'||r.status==='awaiting-forfeit'){
+      actionCell = `<label class="chk" title="Manager override — pay this incentive despite missing the window"><input type="checkbox" data-inc-override="${r.recordId}" data-inc-override-field="${overrideField}"> Override — pay anyway</label>`;
+    } else if(r.status==='deduct-due'||r.status==='deducted'){
+      actionCell = `<label class="chk" title="Confirm this clawback has been applied to the FM's payout"><input type="checkbox" data-inc-deduct="${r.recordId}" data-inc-deduct-field="${deductField}" ${r.paid?'checked':''}> ${r.paid?'Deducted '+fmtD(r.paidDate):'Mark deducted'}</label>`;
+    } else {
+      actionCell = '<span style="color:var(--faint)">—</span>';
+    }
+    const amountCell = r.isDeduction ? `<span style="color:var(--red);font-weight:700">-${inr(Math.abs(r.amount))}</span>` : inr(r.amount);
+    return `<tr data-open="${r.recordId}" style="cursor:pointer">
+      <td><div class="nmcell">${esc(r.name)}</div>
+        <div class="paytags">
+          <span class="paytag model">${esc(r.model)}</span>
+          ${r.district?`<span class="paytag dist">${esc(r.district)}</span>`:''}
+        </div></td>
+      <td style="color:var(--dim)">${esc(r.fm)}</td>
+      <td>${r.tranche}${r.isDeduction?' <span class="chip c-red" style="font-size:9px;padding:1px 5px">clawback</span>':''}</td>
+      <td style="color:var(--dim)">${ordinal} sale/month</td>
+      <td class="money">${amountCell}</td>
+      <td style="color:var(--dim)">${fmtDlong(r.releaseDate)}</td>
+      <td class="inc-status-${r.status}">${incStatusLabel(r.status)}${r.overridden?' <span class="chip c-amber" style="font-size:9px;padding:1px 5px">overridden</span>':''}</td>
+      <td onclick="event.stopPropagation()">${actionCell}</td>
+    </tr>`;
+  }).join('');
+}
+document.getElementById('incFM').onchange=e=>{incView.fm=e.target.value; renderIncentives();};
+document.getElementById('incStatus').onchange=e=>{incView.status=e.target.value; renderIncentives();};
+document.getElementById('incTbody').addEventListener('change',async e=>{
+  const ov=e.target.closest('[data-inc-override]');
+  if(ov){
+    const id=ov.dataset.incOverride, field=ov.dataset.incOverrideField;
+    const r=RECORDS.find(x=>x.id===id); if(!r) return;
+    r[field]=ov.checked;
+    await saveOne(r);
+    renderIncentives();
+    return;
+  }
+  const dd=e.target.closest('[data-inc-deduct]');
+  if(dd){
+    const id=dd.dataset.incDeduct, field=dd.dataset.incDeductField;
+    const r=RECORDS.find(x=>x.id===id); if(!r) return;
+    const today=new Date().toISOString().slice(0,10);
+    r[field]=dd.checked;
+    r[field+'Date']=dd.checked?today:null;
+    await saveOne(r);
+    renderIncentives();
+    return;
+  }
+  const cb=e.target.closest('[data-inc-paid]'); if(!cb) return;
+  const id=cb.dataset.incPaid, tranche=cb.dataset.incTranche;
+  const r=RECORDS.find(x=>x.id===id); if(!r) return;
+  const today=new Date().toISOString().slice(0,10);
+  if(tranche==='Agreement'){
+    r.loiIncentivePaid=cb.checked;
+    r.loiIncentivePaidDate=cb.checked?today:null;
+  } else {
+    r.openingIncentivePaid=cb.checked;
+    r.openingIncentivePaidDate=cb.checked?today:null;
+  }
+  await saveOne(r);
+  renderIncentives();
+});
 
 /* =========================================================
    DRAWER
@@ -1547,7 +2020,7 @@ function renderDrawer(){
   const d=derive(r);
   document.getElementById('dName').textContent=r.name;
   document.getElementById('dMeta').innerHTML=
-    `${esc(r.phone||'no number')} · ${esc(r.fm||'unassigned')} · ${r.model} · ${esc([r.district,r.state].filter(Boolean).join(', ')||'location not set')}${r.source?' · via '+esc(r.source):''}`;
+    `${esc(r.phone||'no number')} · ${esc(r.fm||'unassigned')} · ${r.model} · ${esc([r.district,r.state].filter(Boolean).join(', ')||'location not set')}${r.source?' · via '+esc(r.source):''}${r.leadDate?' · lead '+fmtD(r.leadDate):''}`;
 
   const cost=totalCost(r), coll=collected(r), bal=balance(r);
   const payments=(r.payments||[]);
@@ -1576,14 +2049,28 @@ function renderDrawer(){
     const stageCls = d.stage==='Completed'?'c-green':d.stage.startsWith('Rejected')?'c-red':d.stage==='Refund done'?'c-grey':'c-blue';
     const rm=reminderState(r);
     let remHtml='';
+    // Always-visible: eligibility meeting / founder's decision pending (not gated by the payment-reminder windows)
+    if(r.decision!=='Rejected' && !r.meetingDone){
+      remHtml+=`<div class="reminder-box amber"><div class="rm-h">📋 Eligibility meeting not yet held</div><div class="rm-d">Schedule and hold the meeting so the founder can decide. Use the WhatsApp/Email buttons above to reach ${esc(r.name)}.</div></div>`;
+    } else if(r.decision!=='Rejected' && r.meetingDone && !r.decision){
+      remHtml+=`<div class="reminder-box amber"><div class="rm-h">⏳ Awaiting founder's decision</div><div class="rm-d">Meeting held on ${fmtD(r.meetingDate)} — still needs Selected/Rejected before the agreement clock can begin.</div></div>`;
+    }
+    // Agreement-amount clock — show its running state even before the day-8 reminder kicks in
+    if(r.decision==='Selected' && !agreeComplete(r) && d.nine && rm.agreeDue===null && rm.agreeEscalate===null){
+      remHtml+=`<div class="reminder-box${d.nine.state==='overdue'?' red':''}"><div class="rm-h">⏳ Agreement amount clock running — ${d.nine.txt}</div><div class="rm-d">₹${Math.round(agreeRemaining(r)).toLocaleString('en-IN')} still to collect of the ₹${CFG.agreeTotal.toLocaleString('en-IN')} agreement amount.</div></div>`;
+    }
     if(rm.agreeDue!==null) remHtml+=`<div class="reminder-box amber"><div class="rm-h">⏰ Agreement reminder — ${rm.agreeDue} day(s) left</div><div class="rm-d">Remind the FM to collect the agreement amount. To: FM · CC: Ajay.</div><button class="mailbtn" data-rem="agreeDue" data-arg="${rm.agreeDue}">Send FM reminder</button></div>`;
     if(rm.agreeEscalate!==null) remHtml+=`<div class="reminder-box red"><div class="rm-h">🚨 Escalate to CEO — agreement overdue ${rm.agreeEscalate} day(s)</div><div class="rm-d">Agreement amount not received. To: Chandru (CEO) · CC: FM, Ajay.</div><button class="mailbtn" data-rem="agreeEsc" data-arg="${rm.agreeEscalate}">Escalate to Chandru</button></div>`;
+    // Full-payment clock — show its running state even before the day-30 reminder kicks in
+    if(agreeComplete(r) && balance(r)>0 && d.sixty && !rm.fullDue.length && rm.fullEscalate===null){
+      remHtml+=`<div class="reminder-box${d.sixty.state==='overdue'?' red':''}"><div class="rm-h">⏳ Full-payment clock running — ${d.sixty.txt}</div><div class="rm-d">₹${Math.round(balance(r)).toLocaleString('en-IN')} balance remaining of the total franchise cost.</div></div>`;
+    }
     rm.fullDue.forEach(f=>{ remHtml+=`<div class="reminder-box amber"><div class="rm-h">⏰ Full-payment reminder — ${f.days} days done, ${f.left} left</div><div class="rm-d">Remind the FM. FM's 2nd-half incentive is at stake. To: FM · CC: Ajay.</div><button class="mailbtn" data-rem="fullDue" data-arg="${f.days}|${f.left}">Send FM reminder</button></div>`; });
     if(rm.fullEscalate!==null) remHtml+=`<div class="reminder-box red"><div class="rm-h">🚨 Escalate to CEO — full payment overdue ${rm.fullEscalate} day(s)</div><div class="rm-d">Full payment not received within 60 days. To: Chandru (CEO) · CC: FM, Ajay.</div><button class="mailbtn" data-rem="fullEsc" data-arg="${rm.fullEscalate}">Escalate to Chandru</button></div>`;
     return `
     <div class="action-center">
       <div class="ac-row"><span class="ac-stage-label">Stage</span><span class="chip ${stageCls}">${esc(d.stage)}</span></div>
-      <div class="ac-row"><span>💰 LOI incentive</span><span class="chip ${loiIncentiveState(r).cls}">${loiIncentiveState(r).text}</span></div>
+      <div class="ac-row"><span>💰 Agreement incentive</span><span class="chip ${loiIncentiveState(r).cls}">${loiIncentiveState(r).text}</span></div>
       <div class="ac-row"><span>💰 Opening incentive</span><span class="chip ${openingIncentiveState(r).cls}">${openingIncentiveState(r).text}</span></div>
       ${remHtml || '<div class="ac-clear">✓ No reminder or escalation due right now.</div>'}
     </div>`;
@@ -1591,19 +2078,20 @@ function renderDrawer(){
 
   ${(()=>{
     const isRejected = r.decision==='Rejected';
-    const openOverview = secOpen(r.id,'ov', d.stage==='Token paid'||d.stage==='Eligibility review');
+    const preEligibility = ['Token paid','ERP contact pending','LOI pending','LOI sent','Meeting pending','Eligibility review'].includes(d.stage);
+    const openOverview = secOpen(r.id,'ov', preEligibility);
     const openRefund   = secOpen(r.id,'rf', isRejected);
-    const openPayments = secOpen(r.id,'pay', !isRejected && d.stage!=='Token paid' && d.stage!=='Eligibility review');
+    const openPayments = secOpen(r.id,'pay', !isRejected && !preEligibility);
     const showNotify   = !isRejected && (agreeComplete(r) || balance(r)<=0);
     const openNotify   = secOpen(r.id,'nt', showNotify && (d.stage==='Agreement pending'||d.stage==='Balance due'||d.stage==='Completed'));
 
     let out=`
     <details class="sect-wrap" data-sec="ov" ${openOverview?'open':''}>
-      <summary><h4>Overview — token, LOI &amp; eligibility</h4></summary>
+      <summary><h4>Overview — token to eligibility</h4></summary>
       <div class="sect-body">
         <div class="step">
           <div class="sh"><span class="st">Total franchise cost</span><span class="money">${inr(cost)}</span></div>
-          <div class="sd">${r.model} · ${inr(r.model==='Master'?CFG.masterCost:(r.model==='FICO'?CFG.ficoCost:CFG.unitCost))} + ${CFG.gst}% GST</div>
+          <div class="sd">${r.model==='FICO'?(r.model+' · '+inr(CFG.ficoCost)+' (all-inclusive, no GST)'):(r.model+' · '+inr(r.model==='Master'?CFG.masterCost:CFG.unitCost)+' + '+CFG.gst+'% GST')}</div>
           <div class="deadline"><span>Collected</span><span class="money" style="color:var(--green)">${inr(coll)}</span></div>
           <div class="deadline"><span>Balance</span><span class="money bal">${r.decision==='Rejected'?'—':inr(bal)}</span></div>
         </div>
@@ -1611,23 +2099,61 @@ function renderDrawer(){
         <div class="step" style="margin-top:14px">
           <div class="sh"><span><span class="st">Token received</span><span class="sd">${fmtD(r.tokenDate)}</span></span><span class="chip c-green">${inr(CFG.token)}</span></div>
           <div class="fld"><label>Token payment date</label><input type="date" data-f="tokenDate" value="${r.tokenDate||''}"></div>
-          <label class="chk"><input type="checkbox" data-f="loaDone" ${r.loaDone?'checked':''}> LOI issued to franchisee</label>
-          ${r.loaDone?`<div class="fld" style="margin-top:9px"><label>LOI issued on</label><input type="date" data-f="loaDate" value="${r.loaDate||''}"></div>`:''}
-          <div class="deadline"><span>Issue within ${CFG.winLoa} days of token</span>${chip(d.loa)}</div>
         </div>
-        ${!r.loaDone?`
-        <div class="step handoff">
-          <div class="sh"><span class="st">Internal — ask Finance to issue the LOI</span>${r.loaNotified?'<span class="chip c-green">Notified</span>':'<span class="chip c-amber">Not sent</span>'}</div>
-          <div class="sd">Sends ${esc(r.name)}'s details (phone, email, model, district, token date) to Finance.</div>
+
+        <div class="step${!r.contactFormFilled?' handoff':''}" style="margin-top:14px">
+          <div class="sh"><span class="st">1. Contact details${!r.contactFormFilled?'':' — done'}</span>${r.contactFormFilled?'<span class="chip c-green">Filled</span>':(r.contactFormSent?'<span class="chip c-amber">Sent, awaiting form</span>':'<span class="chip c-amber">Not sent</span>')}</div>
+          ${!r.contactFormFilled?`
+          <div class="sd">Ask ${esc(r.fm||'the FM')} to collect ${esc(r.name)}'s details for the contact/ERP form.</div>
+          <div class="handoff-btns">
+            <button class="mailbtn" id="contactFormMail">Email FM</button>
+            <button class="wabtn" id="contactFormWa" style="margin-top:0">WhatsApp FM</button>
+            <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="contactFormSent" ${r.contactFormSent?'checked':''}> Sent</label>
+          </div>`:''}
+          <label class="chk" style="margin-top:9px"><input type="checkbox" data-f="contactFormFilled" ${r.contactFormFilled?'checked':''}> Contact form filled</label>
+          ${r.contactFormFilled?`<div class="fld" style="margin-top:9px"><label>Filled on</label><input type="date" data-f="contactFormFilledDate" value="${r.contactFormFilledDate||''}"></div>`:''}
+          <div class="deadline"><span>Get details within 24 hours of token</span>${chip(d.form)}</div>
+        </div>
+
+        ${r.contactFormFilled?`
+        <div class="step${!r.misContactCreated?' handoff':''}" style="margin-top:14px">
+          <div class="sh"><span class="st">2. ERP contact${!r.misContactCreated?'':' — done'}</span>${r.misContactCreated?'<span class="chip c-green">Created</span>':(r.baNotified?'<span class="chip c-amber">Sent, awaiting creation</span>':'<span class="chip c-amber">Not sent</span>')}</div>
+          ${!r.misContactCreated?`
+          <div class="sd">Ask MIS to create ${esc(r.name)}'s contact/ID in ERP.</div>
+          <div class="handoff-btns">
+            <button class="mailbtn" id="baMail">Email BA/MIS</button>
+            <button class="wabtn" id="baWa" style="margin-top:0">WhatsApp BA/MIS</button>
+            <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="baNotified" ${r.baNotified?'checked':''}> Sent</label>
+          </div>`:''}
+          <label class="chk" style="margin-top:9px"><input type="checkbox" data-f="misContactCreated" ${r.misContactCreated?'checked':''}> ERP contact created</label>
+          ${r.misContactCreated?`<div class="fld" style="margin-top:9px"><label>Created on</label><input type="date" data-f="misContactCreatedDate" value="${r.misContactCreatedDate||''}"></div>`:''}
+          <div class="deadline"><span>Create same day the form is filled</span>${chip(d.mis)}</div>
+        </div>`:''}
+
+        ${r.misContactCreated?`
+        <div class="step${!r.loaDone?' handoff':''}" style="margin-top:14px">
+          <div class="sh"><span class="st">3. LOI${!r.loaDone?'':' — done'}</span>${r.loaDone?'<span class="chip c-green">Issued</span>':(r.loaNotified?'<span class="chip c-amber">Notified</span>':'<span class="chip c-amber">Not sent</span>')}</div>
+          ${!r.loaDone?`
+          <div class="sd">Sends ${esc(r.name)}'s details to Finance to issue the LOI and reserve their zone/territory.</div>
           <div class="handoff-btns">
             <button class="mailbtn" id="finMail">Email Finance</button>
             <button class="wabtn" id="finWa" style="margin-top:0">WhatsApp Finance</button>
             <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="loaNotified" ${r.loaNotified?'checked':''}> Sent</label>
-          </div>
+          </div>`:''}
+          <label class="chk" style="margin-top:9px"><input type="checkbox" data-f="loaDone" ${r.loaDone?'checked':''}> LOI issued to franchisee</label>
+          ${r.loaDone?`<div class="fld" style="margin-top:9px"><label>LOI issued on</label><input type="date" data-f="loaDate" value="${r.loaDate||''}"></div>`:''}
+          <div class="deadline"><span>Issue within ${CFG.winLoa} days of token</span>${chip(d.loa)}</div>
         </div>`:''}
 
+        ${r.loaDone?`
         <div class="step" style="margin-top:14px">
-          <label class="chk"><input type="checkbox" data-f="meetingDone" ${r.meetingDone?'checked':''}> Eligibility meeting held</label>
+          <label class="chk"><input type="checkbox" data-f="loiSigned" ${r.loiSigned?'checked':''}> 4. Client signed &amp; returned the LOI</label>
+          ${r.loiSigned?`<div class="fld" style="margin-top:9px"><label>Signed on</label><input type="date" data-f="loiSignedDate" value="${r.loiSignedDate||''}"></div>`:''}
+        </div>`:''}
+
+        ${r.loiSigned?`
+        <div class="step" style="margin-top:14px">
+          <label class="chk"><input type="checkbox" data-f="meetingDone" ${r.meetingDone?'checked':''}> 5. Eligibility meeting held</label>
           ${r.meetingDone?`<div class="fld" style="margin-top:9px"><label>Meeting date</label><input type="date" data-f="meetingDate" value="${r.meetingDate||''}"></div>
           <div class="grid2">
             <div class="fld"><label>Founder's decision</label><select data-f="decision">
@@ -1636,8 +2162,9 @@ function renderDrawer(){
               <option ${r.decision==='Rejected'?'selected':''}>Rejected</option>
             </select></div>
             <div class="fld"><label>Decision date</label><input type="date" data-f="decisionDate" value="${r.decisionDate||''}"></div>
-          </div>`:'<div class="sd" style="margin-top:8px">Tick once the meeting is done to record the founder\u2019s decision.</div>'}
-        </div>
+          </div>`:`<div class="sd" style="margin-top:8px">Tick once the meeting is done to record the founder\u2019s decision.</div>
+          <div class="deadline"><span>Hold within 24 hours of the LOI being signed</span>${chip(d.meet)}</div>`}
+        </div>`:''}
       </div>
     </details>
 
@@ -1713,7 +2240,7 @@ function renderDrawer(){
       <div class="sect-body">
         ${agreeComplete(r)?`
         <div class="step handoff">
-          <div class="sh"><span class="st">Agreement amount crossed — notify Legal, Care &amp; franchisee</span></div>
+          <div class="sh"><span class="st">Agreement amount crossed — notify Legal &amp; franchisee</span></div>
           <div class="handoff-btns" style="margin-top:6px">
             <span style="font-size:11px;color:var(--faint);width:100%">Legal — prepare agreement:</span>
             <button class="mailbtn" id="legMail">Email Legal</button>
@@ -1721,21 +2248,20 @@ function renderDrawer(){
             <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="agreementNotified" ${r.agreementNotified?'checked':''}> Sent</label>
           </div>
           <div class="handoff-btns" style="margin-top:8px">
-            <span style="font-size:11px;color:var(--faint);width:100%">FM — ask franchisee to fill the agreement details form:</span>
-            <button class="mailbtn" id="agreeFormMail">Email FM</button>
-            <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="agreeFormNotified" ${r.agreeFormNotified?'checked':''}> Sent</label>
+            <span style="font-size:11px;color:var(--faint);width:100%">Franchisee — agreement amount received (agreement coming soon):</span>
+            ${r.email?`<button class="mailbtn" id="custAgreeRecdMail">Email Franchisee</button>`:'<span style="font-size:11px;color:var(--faint)">No email saved</span>'}
+            ${waNumber(r.phone)?`<button class="wabtn" id="custAgreeRecdWa" style="margin-top:0">WhatsApp Franchisee</button>`:''}
+            <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="custAgreeRecdNotified" ${r.custAgreeRecdNotified?'checked':''}> Sent</label>
           </div>
+          <div class="handoff-btns" style="margin-top:8px;border-top:1px dashed var(--line);padding-top:10px">
+            <label class="chk"><input type="checkbox" data-f="agreementIssued" ${r.agreementIssued?'checked':''}> Legal has issued the signed agreement${r.agreementIssuedDate?' ('+fmtD(r.agreementIssuedDate)+')':''}</label>
+          </div>
+          ${r.agreementIssued?`
           <div class="handoff-btns" style="margin-top:8px">
-            <span style="font-size:11px;color:var(--faint);width:100%">Franchisee Care — onboarding meet:</span>
-            <button class="mailbtn" id="careMailA">Email Care</button>
-            <button class="wabtn" id="careWaA" style="margin-top:0">WhatsApp Care</button>
-            <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="careNotifiedAgree" ${r.careNotifiedAgree?'checked':''}> Sent</label>
-          </div>
-          <div class="handoff-btns" style="margin-top:8px">
-            <span style="font-size:11px;color:var(--faint);width:100%">Franchisee — agreement &amp; onboarding meet:</span>
-            ${r.email?`<button class="mailbtn" id="custAgreeMail">Email Franchisee</button>`:'<span style="font-size:11px;color:var(--faint)">No email saved</span>'}
-            ${waNumber(r.phone)?`<button class="wabtn" id="custAgreeWa" style="margin-top:0">WhatsApp Franchisee</button>`:''}
-          </div>
+            <span style="font-size:11px;color:var(--faint);width:100%">Franchisee — agreement issued, please sign &amp; revert:</span>
+            ${r.email?`<button class="mailbtn" id="custAgreeSignMail">Email Franchisee</button>`:'<span style="font-size:11px;color:var(--faint)">No email saved</span>'}
+            ${waNumber(r.phone)?`<button class="wabtn" id="custAgreeSignWa" style="margin-top:0">WhatsApp Franchisee</button>`:''}
+          </div>`:''}
         </div>`:''}
         ${balance(r)<=0?`
         <div class="step handoff" style="margin-top:${agreeComplete(r)?'12px':'0'};border-color:rgba(37,193,154,.35);background:linear-gradient(180deg,rgba(37,193,154,.08),transparent)">
@@ -1743,6 +2269,12 @@ function renderDrawer(){
           <div class="handoff-btns" style="margin-top:6px">
             <span style="font-size:11px;color:var(--faint);width:100%">Welcome email to <b>${esc(r.name)}</b> — CC: NSM, FM &amp; Customer Success:</span>
             ${r.email?`<button class="mailbtn" id="completionMail">Send welcome email</button>`:'<span style="font-size:11px;color:var(--red)">Add the franchisee email in Record details first.</span>'}
+          </div>
+          <div class="handoff-btns" style="margin-top:8px">
+            <span style="font-size:11px;color:var(--faint);width:100%">Franchisee Care — start onboarding process:</span>
+            <button class="mailbtn" id="careMailA">Email Care</button>
+            <button class="wabtn" id="careWaA" style="margin-top:0">WhatsApp Care</button>
+            <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="careNotifiedAgree" ${r.careNotifiedAgree?'checked':''}> Sent</label>
           </div>
           <div class="handoff-btns" style="margin-top:8px">
             <span style="font-size:11px;color:var(--faint);width:100%">Procurement email to Operations — CC: all departments &amp; admin${brochureFor(r)?' (brochure link included)':''}:</span>
@@ -1755,6 +2287,26 @@ function renderDrawer(){
     `}
     `;
     return out;
+  })()}
+
+  ${(()=>{
+    if(r.decision==='Rejected') return ''; // rejected already has its own refund flow
+    return `
+  <details class="sect-wrap" data-sec="cn" ${secOpen(r.id,'cn',false)?'open':''}>
+    <summary><h4>${r.cancelled?'Cancelled':'Cancel this franchise'}</h4></summary>
+    <div class="sect-body">
+      <div class="step" style="${r.cancelled?'border-color:rgba(255,77,94,.3);background:linear-gradient(180deg,rgba(255,77,94,.05),transparent)':''}">
+        <label class="chk"><input type="checkbox" data-f="cancelled" ${r.cancelled?'checked':''}> Mark this franchise as cancelled</label>
+        ${r.cancelled?`
+        <div class="fld" style="margin-top:9px"><label>Cancelled on</label><input type="date" data-f="cancelDate" value="${r.cancelDate||''}"></div>
+        <div class="fld" style="margin-top:9px"><label>Reason (optional)</label><input data-f="cancelReason" value="${esc(r.cancelReason||'')}" placeholder="Why the franchise was cancelled"></div>
+        <div class="deadline"><span>Amount collected before cancelling</span><span class="money">${inr(collected(r))}</span></div>
+        <label class="chk" style="margin-top:9px"><input type="checkbox" data-f="cancelRefunded" ${r.cancelRefunded?'checked':''}> Amount was refunded</label>
+        ${r.cancelRefunded?`<div class="fld" style="margin-top:9px"><label>Refunded on</label><input type="date" data-f="cancelRefundDate" value="${r.cancelRefundDate||''}"></div>`:''}
+        `:`<div class="sd" style="margin-top:8px">Use this only if the franchise is being called off after progressing past the eligibility stage. The amount already collected (${inr(collected(r))}) will be recorded on the Cancelled scorecard.</div>`}
+      </div>
+    </div>
+  </details>`;
   })()}
 
   <details class="sect-wrap" data-sec="dt" ${secOpen(r.id,'dt',false)?'open':''}>
@@ -1775,8 +2327,9 @@ function renderDrawer(){
       </div>
       <div class="grid2">
         <div class="fld"><label>Lead source</label><select id="dSource"></select></div>
-        <div class="fld" id="dSourceOtherWrap" style="display:none"><label>Specify source</label><input id="dSourceOther" value="${esc(r.source&&!(CFG.leadSources||[]).includes(r.source)?r.source:'')}" placeholder="Type the source"></div>
+        <div class="fld"><label>Lead generation date</label><input type="date" data-f="leadDate" value="${r.leadDate||''}"></div>
       </div>
+      <div class="fld" id="dSourceOtherWrap" style="display:none"><label>Specify source</label><input id="dSourceOther" value="${esc(r.source&&!(CFG.leadSources||[]).includes(r.source)?r.source:'')}" placeholder="Type the source"></div>
       <button class="linebtn" id="dDelete">Delete this franchisee</button>
     </div>
   </details>`;
@@ -1901,6 +2454,9 @@ document.getElementById('dBody').addEventListener('change',async e=>{
   if(f==='loaDone'&&r.loaDone&&!r.loaDate) r.loaDate=new Date().toISOString().slice(0,10);
   if(f==='agreeDone'&&r.agreeDone&&!r.agreeDate) r.agreeDate=new Date().toISOString().slice(0,10);
   if(f==='refundDone'&&r.refundDone&&!r.refundDate) r.refundDate=new Date().toISOString().slice(0,10);
+  if(f==='cancelled'&&r.cancelled&&!r.cancelDate) r.cancelDate=new Date().toISOString().slice(0,10);
+  if(f==='agreementIssued'&&r.agreementIssued&&!r.agreementIssuedDate) r.agreementIssuedDate=new Date().toISOString().slice(0,10);
+  if(f==='cancelRefunded'&&r.cancelRefunded&&!r.cancelRefundDate) r.cancelRefundDate=new Date().toISOString().slice(0,10);
   await saveOne(r); renderAll();
 });
 document.getElementById('dBody').addEventListener('click',async e=>{
@@ -1920,10 +2476,15 @@ document.getElementById('dBody').addEventListener('click',async e=>{
     else if(kind==='fullEsc') sendFullEscalation(r, Number(arg));
     return;
   }
+  if(id==='contactFormMail'){ sendContactFormEmail(r); return; }
+  if(id==='contactFormWa'){ sendContactFormWa(r); return; }
   if(id==='finMail'){ notifyFinanceEmail(r); return; }
   if(id==='finWa'){ notifyFinanceWa(r); return; }
   if(id==='legMail'){ notifyLegalEmail(r); return; }
   if(id==='agreeFormMail'){ sendAgreementFormEmail(r); return; }
+  if(id==='agreeFormWa'){ sendAgreementFormWa(r); return; }
+  if(id==='baMail'){ sendBaEmail(r); return; }
+  if(id==='baWa'){ sendBaWa(r); return; }
   if(id==='legWa'){ notifyLegalWa(r); return; }
   if(id==='refMail'){ notifyRefundEmail(r); return; }
   if(id==='refWa'){ notifyRefundWa(r); return; }
@@ -1933,8 +2494,10 @@ document.getElementById('dBody').addEventListener('click',async e=>{
   if(id==='careWa'){ notifyCareWa(r); return; }
   if(id==='careMailA'){ notifyCareMeetEmail(r); return; }
   if(id==='careWaA'){ notifyCareMeetWa(r); return; }
-  if(id==='custAgreeMail'){ custAgreeEmail(r); return; }
-  if(id==='custAgreeWa'){ custAgreeWa(r); return; }
+  if(id==='custAgreeRecdMail'){ custAgreeRecdEmail(r); return; }
+  if(id==='custAgreeRecdWa'){ custAgreeRecdWa(r); return; }
+  if(id==='custAgreeSignMail'){ custAgreeSignEmail(r); return; }
+  if(id==='custAgreeSignWa'){ custAgreeSignWa(r); return; }
   if(id==='pAdd'){
     const amt=Number(document.getElementById('pAmt').value);
     const date=document.getElementById('pDate').value;
@@ -1977,6 +2540,13 @@ document.getElementById('fStage').onchange=e=>{view.stage=e.target.value;renderT
 document.getElementById('fFM').onchange=e=>{view.fm=e.target.value; renderKPIs(); renderFlags(); renderTable();};
 document.getElementById('fSource').onchange=e=>{view.source=e.target.value;renderTable();};
 document.getElementById('fFlag').onchange=e=>{view.flag=e.target.value;renderTable();};
+document.getElementById('kpis').addEventListener('click',e=>{
+  const card=e.target.closest('[data-kpi]'); if(!card) return;
+  const key=card.dataset.kpi;
+  view.kpi = (view.kpi===key) ? '' : key;  // click again to clear
+  renderKPIs(); renderTable();
+  document.getElementById('tbody').scrollIntoView({behavior:'smooth',block:'start'});
+});
 document.getElementById('search').oninput=e=>{view.q=e.target.value;renderTable();};
 
 /* add modal */
@@ -2012,7 +2582,7 @@ document.getElementById('aSave').onclick=async()=>{
     id:uid(), name, phone:document.getElementById('aPhone').value.trim(), email:document.getElementById('aEmail').value.trim(),
     fm:document.getElementById('aFM').value, model:document.getElementById('aModel').value,
     state:document.getElementById('aState').value.trim(), district:document.getElementById('aDistrict').value.trim(),
-    source,
+    source, leadDate:document.getElementById('aLeadDate').value||'',
     tokenDate, loaDone:false, meetingDone:false, decision:'', payments:[]
   });
   await save(); addModal.classList.remove('on'); fillFMs(); renderAll(); toast('Franchisee added — clocks running.');
@@ -2178,6 +2748,7 @@ document.getElementById('btnSettings').onclick=()=>{
   sFico.value=CFG.ficoCost||0;
   sBroUnit.value=CFG.brochureUnit||''; sBroMaster.value=CFG.brochureMaster||''; sBroFico.value=CFG.brochureFico||'';
   sAgreeForm.value=CFG.agreementFormLink||''; sLegalResp.value=CFG.legalResponsesLink||''; sOpsCc.value=CFG.opsExtraCc||'';
+  sBaEmail.value=CFG.baEmail||''; sBaPhone.value=CFG.baPhone||'';
   sAgree.value=CFG.agreeTotal; sGst.value=CFG.gst; sW9.value=CFG.win9; sW3.value=CFG.win3;
   sW60.value=CFG.win60; sWloa.value=CFG.winLoa; sWref.value=CFG.winRefund; renderFmBook();
   sFinName.value=CFG.financeName||''; sFinEmail.value=CFG.financeEmail||''; sFinPhone.value=CFG.financePhone||'';
@@ -2194,6 +2765,7 @@ document.getElementById('sSave').onclick=async()=>{
        masterCost:+sMaster.value,unitCost:+sUnit.value,ficoCost:+sFico.value,token:+sToken.value,agreeTotal:+sAgree.value,
        brochureUnit:sBroUnit.value.trim(),brochureMaster:sBroMaster.value.trim(),brochureFico:sBroFico.value.trim(),
        agreementFormLink:sAgreeForm.value.trim(),legalResponsesLink:sLegalResp.value.trim(),opsExtraCc:sOpsCc.value.trim(),
+       baEmail:sBaEmail.value.trim(),baPhone:sBaPhone.value.trim(),
        gst:+sGst.value,win9:+sW9.value,win3:+sW3.value,win60:+sW60.value,winLoa:+sWloa.value,
        winRefund:+sWref.value,fms:book.fms,fmPhones:book.fmPhones,fmEmails:book.fmEmails,
        financeName:sFinName.value.trim(),financeEmail:sFinEmail.value.trim(),financePhone:sFinPhone.value.trim(),
