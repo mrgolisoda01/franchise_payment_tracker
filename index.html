@@ -111,6 +111,8 @@ tbody tr.hasflag td.freeze-1{box-shadow:inset 3px 0 0 var(--red)}
 .nmcell{font-weight:600;color:#fff;white-space:normal;word-break:break-word;line-height:1.3}
 .nmcell small{display:block;font-family:'JetBrains Mono',monospace;font-weight:400;color:var(--faint);font-size:11px;margin-top:2px}
 .chip{display:inline-block;padding:4px 9px;border-radius:7px;font-size:11px;font-weight:600;white-space:nowrap;font-family:'JetBrains Mono',monospace}
+.clickable-chip{cursor:pointer;border:1px solid currentColor;transition:.12s}
+.clickable-chip:hover{filter:brightness(1.3);transform:translateY(-1px)}
 .c-blue{background:rgba(0,163,224,.15);color:var(--blue)}
 .c-green{background:rgba(37,193,154,.15);color:var(--green)}
 .c-amber{background:rgba(255,166,43,.16);color:var(--amber)}
@@ -289,6 +291,7 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
       <button data-m="Master">Master</button>
       <button data-m="Unit">Unit</button>
       <button data-m="FICO">FICO</button>
+      <button data-m="Old model">Old model</button>
     </div>
     <select class="filt" id="fStage">
       <option value="">All stages</option>
@@ -409,7 +412,8 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
       <div class="fld"><label>Franchise manager</label><select id="aFM"></select></div>
     </div>
     <div class="grid2">
-      <div class="fld"><label>Model</label><select id="aModel"><option>Master</option><option>Unit</option><option>FICO</option></select></div>
+      <div class="fld"><label>Model</label><select id="aModel"><option>Master</option><option>Unit</option><option>FICO</option><option>Old model</option></select></div>
+      <div class="fld" id="aOldBudgetWrap" style="display:none"><label>Total budget (₹, before GST — this franchisee only)</label><input class="num" id="aOldBudget" type="number" placeholder="0"></div>
       <div class="fld"><label>₹50,000 token paid on</label><input type="date" id="aDate"></div>
     </div>
     <div class="grid2">
@@ -562,7 +566,7 @@ let SB_OK=false, SB_LAST_ERR='';
 // The app uses camelCase internally; the Supabase columns are all lowercase.
 const SB_FIELD_MAP={
   id:'id', name:'name', phone:'phone', email:'email', model:'model', fm:'fm',
-  state:'state', district:'district', source:'source', leadDate:'leaddate',
+  state:'state', district:'district', source:'source', leadDate:'leaddate', oldModelBudget:'oldmodelbudget',
   tokenDate:'tokendate',
   loaDone:'loadone', loaDate:'loadate', loaNotified:'loanotified',
   meetingDone:'meetingdone', meetingDate:'meetingdate',
@@ -942,10 +946,12 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 
 function totalCost(r){
   if(r.model==='FICO') return CFG.ficoCost||0; // FICO price is already all-inclusive — no GST added on top
+  if(r.model==='Old model') return (r.oldModelBudget||0)*(1+CFG.gst/100); // custom per-franchisee budget, GST added on top
   const base = r.model==='Master'?CFG.masterCost:CFG.unitCost;
   return base*(1+CFG.gst/100);
 }
 function brochureFor(r){
+  if(r.model==='Old model') return ''; // custom legacy pricing — no standard brochure
   return r.model==='Master'?CFG.brochureMaster : r.model==='FICO'?CFG.brochureFico : CFG.brochureUnit;
 }
 function brochureLine(r){
@@ -1151,7 +1157,7 @@ const TEMPLATE_REGISTRY=[
 ];
 const TEMPLATE_PLACEHOLDERS='{name} {model} {district} {state} {token} {agreement} {agreementremaining} {collected} {balance} {total} {fm} {win9} {win3} {win60} {team}';
 
-/* =========================================================
+/* ========================================================= */
 // Time-aware urgency phrasing based on a clock's state (for customer & internal mails)
 function urgency(c, audience){
   if(!c) return '';
@@ -1259,16 +1265,25 @@ function emailBody(r,d){
 }
 function mailto(to,subject,body,cc){
   // Opens the default mail app with everything pre-filled.
-  // Uses an anchor click, which is more reliable than window.location across browsers.
-  // (Pre-fill works in the deployed/downloaded file — not inside the Claude preview sandbox.)
-  let url='mailto:'+encodeURIComponent(to||'')+'?subject='+encodeURIComponent(subject||'')+'&body='+encodeURIComponent(body||'');
-  if(cc) url+='&cc='+encodeURIComponent(cc);
+  // Some Windows mail handlers silently fail to launch when the mailto: contains
+  // certain multi-byte Unicode (₹, em/en dashes, curly quotes). We swap those for
+  // plain-ASCII equivalents ONLY in the mailto payload — the meaning is unchanged.
+  const asciiSafe=s=>String(s||'')
+    .replace(/\u20B9/g,'Rs.')      // ₹ rupee
+    .replace(/[\u2013\u2014]/g,'-')// – — dashes
+    .replace(/[\u2018\u2019]/g,"'")// ' ' curly single quotes
+    .replace(/[\u201C\u201D]/g,'"')// " " curly double quotes
+    .replace(/\u2026/g,'...')      // … ellipsis
+    .replace(/[\u2022]/g,'*');     // • bullet
+  const sTo=asciiSafe(to), sSub=asciiSafe(subject), sBody=asciiSafe(body), sCc=asciiSafe(cc);
+  let url='mailto:'+encodeURIComponent(sTo)+'?subject='+encodeURIComponent(sSub)+'&body='+encodeURIComponent(sBody);
+  if(sCc) url+='&cc='+encodeURIComponent(sCc);
   try{
     const a=document.createElement('a');
     a.href=url; a.style.display='none';
     document.body.appendChild(a); a.click();
     setTimeout(()=>document.body.removeChild(a),100);
-    toast('Opening your email app'+(to?' to '+to:'')+'…');
+    toast('Opening your email app'+(to?' to '+sTo:'')+'…');
   }catch(e){
     window.location.href=url;
   }
@@ -1360,6 +1375,9 @@ function procurementList(model){
   }
   if(model==='FICO'){
     return `Please refer to the FICO model brochure for the full machinery and material procurement list.`;
+  }
+  if(model==='Old model'){
+    return `This is a custom-priced legacy franchise. Please refer to this franchisee's individual agreement for the procurement specification.`;
   }
   // Unit (distribution)
   return `Glass Bottles   : 26,400 nos\n`+
@@ -1575,20 +1593,20 @@ function careBodyShort(r){
   return `Hi Franchisee Care,\n\n${r.name} has completed full payment (${r.model}). Please begin onboarding.\n\n[Full details copied to your clipboard — paste below]\n\nThanks.`;
 }
 // Care notification specifically at agreement-complete: schedule the onboarding meet
-function careMeetSubject(r){ return 'Onboarding meet: Schedule — '+r.name+' ('+r.model+' Franchise, '+(r.district||'district TBD')+')'; }
+function careMeetSubject(r){ return 'Onboarding: Begin — '+r.name+' ('+r.model+' Franchise, '+(r.district||'district TBD')+')'; }
 function careMeetBody(r){
   return `Hi Franchisee Care,\n\n`+
-`${r.name} has completed the ₹${CFG.agreeTotal.toLocaleString('en-IN')} agreement amount. Please connect with them to schedule the onboarding meet.\n\n`+
+`${r.name} has paid the full franchise amount. Please connect with them and start the onboarding process.\n\n`+
 `Franchisee     : ${r.name}\n`+
 `Contact number : ${r.phone||'—'}\n`+
 `Email          : ${r.email||'—'}\n`+
 `Franchise model: ${r.model}\n`+
 `Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
 `Franchise mgr  : ${r.fm||'—'}${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}\n\n`+
-`Please reach out and fix a convenient time for the onboarding meet.\n\nThanks.`;
+`Please reach out and begin the onboarding process at the earliest.\n\nThanks.`;
 }
 function careMeetBodyShort(r){
-  return `Hi Franchisee Care,\n\n${r.name} has paid the agreement amount (${r.model}). Please schedule the onboarding meet.\n\n[Full details copied to your clipboard — paste below]\n\nThanks.`;
+  return `Hi Franchisee Care,\n\n${r.name} has paid the full amount (${r.model}). Please start the onboarding process.\n\n[Full details copied to your clipboard — paste below]\n\nThanks.`;
 }
 // Message to the franchisee at agreement-complete: agreement coming + onboarding meet
 // (1) Fires as soon as the agreement amount is paid — a simple acknowledgment.
@@ -1849,10 +1867,11 @@ function chip(c){ return c?`<span class="chip ${c.cls}">${c.txt}</span>`:'<span 
 // One-line summary of the most urgent reminder/escalation for the table
 function nextReminderCell(r,d){
   const rm=reminderState(r);
-  if(rm.fullEscalate!==null) return '<span class="chip c-red">🚨 Escalate CEO · full pay ovd '+rm.fullEscalate+'d</span>';
-  if(rm.agreeEscalate!==null) return '<span class="chip c-red">🚨 Escalate CEO · agreement ovd '+rm.agreeEscalate+'d</span>';
-  if(rm.fullDue.length) return '<span class="chip c-amber">⏰ FM reminder · full pay '+rm.fullDue[0].left+'d left</span>';
-  if(rm.agreeDue!==null) return '<span class="chip c-amber">⏰ FM reminder · agreement '+rm.agreeDue+'d left</span>';
+  const btn=(cls,label,kind,arg)=>`<span class="chip ${cls} clickable-chip" data-rem-row="${r.id}" data-rem="${kind}" data-arg="${arg}" title="Click to send this email now">${label}</span>`;
+  if(rm.fullEscalate!==null) return btn('c-red','🚨 Escalate CEO · full pay ovd '+rm.fullEscalate+'d','fullEsc',rm.fullEscalate);
+  if(rm.agreeEscalate!==null) return btn('c-red','🚨 Escalate CEO · agreement ovd '+rm.agreeEscalate+'d','agreeEsc',rm.agreeEscalate);
+  if(rm.fullDue.length) return btn('c-amber','⏰ FM reminder · full pay '+rm.fullDue[0].left+'d left','fullDue',rm.fullDue[0].days+'|'+rm.fullDue[0].left);
+  if(rm.agreeDue!==null) return btn('c-amber','⏰ FM reminder · agreement '+rm.agreeDue+'d left','agreeDue',rm.agreeDue);
   if(r.decision!=='Rejected' && !r.meetingDone) return '<span class="chip c-amber">📋 Hold eligibility meeting</span>';
   if(r.decision!=='Rejected' && r.meetingDone && !r.decision) return '<span class="chip c-amber">⏳ Awaiting founder\'s decision</span>';
   // no formal reminder — surface the next operational action briefly
@@ -2319,7 +2338,8 @@ function renderDrawer(){
       <div class="fld"><label>Email address</label><input data-f="email" type="email" value="${esc(r.email||'')}"></div>
       <div class="grid2">
         <div class="fld"><label>Franchise manager</label><select data-f="fm">${['',...CFG.fms].map(f=>`<option ${r.fm===f?'selected':''}>${esc(f)}</option>`).join('')}</select></div>
-        <div class="fld"><label>Model</label><select data-f="model"><option ${r.model==='Master'?'selected':''}>Master</option><option ${r.model==='Unit'?'selected':''}>Unit</option><option ${r.model==='FICO'?'selected':''}>FICO</option></select></div>
+        <div class="fld"><label>Model</label><select data-f="model"><option ${r.model==='Master'?'selected':''}>Master</option><option ${r.model==='Unit'?'selected':''}>Unit</option><option ${r.model==='FICO'?'selected':''}>FICO</option><option ${r.model==='Old model'?'selected':''}>Old model</option></select></div>
+        ${r.model==='Old model'?`<div class="fld"><label>Total budget (₹, before GST — this franchisee only)</label><input class="num" type="number" data-f="oldModelBudget" value="${r.oldModelBudget||0}"></div>`:''}
       </div>
       <div class="grid2">
         <div class="fld"><label>State / UT</label><select data-f="state" id="dState"></select></div>
@@ -2414,11 +2434,22 @@ async function syncFromSupabase(){
   }catch(e){ sbStatus(false, e.message); return false; }
 }
 
+// Shared dispatcher for reminder/escalation buttons — used by both the drawer
+// and the clickable chips in the main table's Next reminder column.
+function fireReminderAction(r, kind, arg){
+  if(kind==='agreeDue') sendAgreeReminder(r, Number(arg));
+  else if(kind==='agreeEsc') sendAgreeEscalation(r, Number(arg));
+  else if(kind==='fullDue'){ const [days,left]=arg.split('|').map(Number); sendFullReminder(r, days, left); }
+  else if(kind==='fullEsc') sendFullEscalation(r, Number(arg));
+}
+
 document.addEventListener('click',e=>{
   const wa=e.target.closest('[data-wa]');
   if(wa){ e.stopPropagation(); const r=RECORDS.find(x=>x.id===wa.dataset.wa); if(r) waOpen(r); return; }
   const ml=e.target.closest('[data-mail]');
   if(ml){ e.stopPropagation(); const r=RECORDS.find(x=>x.id===ml.dataset.mail); if(r) emailOpen(r); return; }
+  const rmChip=e.target.closest('[data-rem-row]');
+  if(rmChip){ e.stopPropagation(); const r=RECORDS.find(x=>x.id===rmChip.dataset.remRow); if(r) fireReminderAction(r, rmChip.dataset.rem, rmChip.dataset.arg||''); return; }
   const ew=e.target.closest('[data-esc-wa]');
   if(ew){ e.stopPropagation(); const r=RECORDS.find(x=>x.id===ew.dataset.escWa); if(r) escalateFmWa(r); return; }
   const em=e.target.closest('[data-esc-mail]');
@@ -2469,11 +2500,7 @@ document.getElementById('dBody').addEventListener('click',async e=>{
   if(id==='escMail'){ escalateFmEmail(r); return; }
   if(id==='dMail'){ emailOpen(r); return; }
   if(el.dataset && el.dataset.rem!==undefined){
-    const kind=el.dataset.rem, arg=el.dataset.arg||'';
-    if(kind==='agreeDue') sendAgreeReminder(r, Number(arg));
-    else if(kind==='agreeEsc') sendAgreeEscalation(r, Number(arg));
-    else if(kind==='fullDue'){ const [days,left]=arg.split('|').map(Number); sendFullReminder(r, days, left); }
-    else if(kind==='fullEsc') sendFullEscalation(r, Number(arg));
+    fireReminderAction(r, el.dataset.rem, el.dataset.arg||'');
     return;
   }
   if(id==='contactFormMail'){ sendContactFormEmail(r); return; }
@@ -2559,6 +2586,9 @@ function fillSourceSelect(sel,current){
 document.getElementById('aSource').onchange=e=>{
   document.getElementById('aSourceOtherWrap').style.display = e.target.value==='Other' ? 'block' : 'none';
 };
+document.getElementById('aModel').onchange=e=>{
+  document.getElementById('aOldBudgetWrap').style.display = e.target.value==='Old model' ? 'block' : 'none';
+};
 document.getElementById('btnAdd').onclick=()=>{
   document.getElementById('aName').value='';document.getElementById('aPhone').value='';
   document.getElementById('aEmail').value='';
@@ -2567,6 +2597,9 @@ document.getElementById('btnAdd').onclick=()=>{
   fillSourceSelect(document.getElementById('aSource'),'');
   document.getElementById('aSourceOther').value='';
   document.getElementById('aSourceOtherWrap').style.display='none';
+  document.getElementById('aModel').value='Master';
+  document.getElementById('aOldBudget').value='';
+  document.getElementById('aOldBudgetWrap').style.display='none';
   document.getElementById('aDate').value=new Date().toISOString().slice(0,10);
   addModal.classList.add('on'); document.getElementById('aName').focus();
 };
@@ -2581,6 +2614,7 @@ document.getElementById('aSave').onclick=async()=>{
   RECORDS.unshift({
     id:uid(), name, phone:document.getElementById('aPhone').value.trim(), email:document.getElementById('aEmail').value.trim(),
     fm:document.getElementById('aFM').value, model:document.getElementById('aModel').value,
+    oldModelBudget:document.getElementById('aModel').value==='Old model'?(+document.getElementById('aOldBudget').value||0):0,
     state:document.getElementById('aState').value.trim(), district:document.getElementById('aDistrict').value.trim(),
     source, leadDate:document.getElementById('aLeadDate').value||'',
     tokenDate, loaDone:false, meetingDone:false, decision:'', payments:[]
