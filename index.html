@@ -248,7 +248,9 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
 /* ---------- modal ---------- */
 .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
 .modal.on{display:flex}
-.mcard{background:var(--panel);border:1px solid var(--line);border-radius:18px;width:min(520px,100%);max-height:88vh;overflow-y:auto;padding:24px}
+.mcard{background:var(--panel);border:1px solid var(--line);border-radius:18px;width:min(520px,100%);max-height:88vh;overflow-y:auto;padding:24px;position:relative}
+.mcard-x{position:sticky;top:-24px;float:right;margin:-12px -8px 0 0;z-index:5;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--dim);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.mcard-x:hover{background:var(--red);color:#fff;border-color:var(--red)}
 .mcard h3{font-family:'Fraunces',serif;font-size:21px;font-weight:600;margin-bottom:4px}
 .mcard p.hint{font-size:12.5px;color:var(--dim);margin-bottom:18px}
 .mfoot{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
@@ -273,6 +275,8 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
     <button class="btn ghost" id="btnSettings">Settings</button>
     <button class="btn ghost" id="btnExport">Export</button>
     <button class="btn ghost" id="btnImport">Import</button>
+    <button class="btn ghost" id="btnCsv" title="Download the currently shown rows as CSV/Excel">CSV</button>
+    <button class="btn ghost" id="btnPdf" title="Download a PDF of the currently shown rows">PDF</button>
     <button class="btn primary" id="btnAdd">+ New franchisee</button>
   </header>
 
@@ -403,6 +407,7 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
 <!-- ADD MODAL -->
 <div class="modal" id="addModal">
   <div class="mcard">
+    <button class="mcard-x" id="aClose2" title="Close">✕</button>
     <h3>New franchisee</h3>
     <p class="hint">The ₹50,000 token date starts the 9-day and 60-day clocks.</p>
     <div class="fld"><label>Contact name</label><input id="aName" placeholder="Full name"></div>
@@ -435,6 +440,7 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
 <!-- SETTINGS MODAL -->
 <div class="modal" id="setModal">
   <div class="mcard">
+    <button class="mcard-x" id="sClose2" title="Close">✕</button>
     <h3>Settings</h3>
     <p class="hint">Costs, GST and the deadline windows every clock runs on.</p>
     <div class="grid2">
@@ -507,9 +513,9 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
 <!-- CALL LIST MODAL -->
 <div class="modal" id="callModal">
   <div class="mcard" style="width:min(640px,100%)">
+    <button class="mcard-x" id="callClose2" title="Close">✕</button>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
       <div><h3>Today's call list</h3><p class="hint" id="callDate" style="margin-bottom:0"></p></div>
-      <button class="btn ghost" id="callClose">Close</button>
     </div>
     <div id="callBody" style="margin-top:16px"></div>
     <div class="mfoot">
@@ -732,7 +738,7 @@ const diffDays=(a,b)=>Math.round((b-a)/86400000);
 // Returns { fullDue:[{days,left}], fullEscalate:overdueDays|null, agreeDue:leftDays|null, agreeEscalate:overdueDays|null }
 function reminderState(r){
   const out={fullDue:[],fullEscalate:null,agreeDue:null,agreeEscalate:null};
-  if(r.decision==='Rejected') return out;
+  if(r.decision==='Rejected'||r.cancelled) return out;
   const T=today();
 
   // --- Agreement amount window: reminders reference the token date, 9-day clock ---
@@ -1076,6 +1082,7 @@ function derive(r){
 
   // flags
   d.flags=[];
+  if(r.cancelled){ d.next={txt:'Cancelled'+(r.cancelDate?' on '+fmtD(r.cancelDate):''),tone:'done'}; return d; }
   if(d.form  && d.form.state==='overdue')  d.flags.push('Contact details not collected — '+Math.abs(d.form.left)+' days past the 24-hour window');
   if(d.mis   && d.mis.state==='overdue')   d.flags.push('ERP contact not created — '+Math.abs(d.mis.left)+' days past the same-day target');
   if(d.meet  && d.meet.state==='overdue')  d.flags.push('Eligibility meeting not held — '+Math.abs(d.meet.left)+' days past the 24-hour window since LOI was signed');
@@ -1866,6 +1873,7 @@ function chip(c){ return c?`<span class="chip ${c.cls}">${c.txt}</span>`:'<span 
 
 // One-line summary of the most urgent reminder/escalation for the table
 function nextReminderCell(r,d){
+  if(r.cancelled) return '<span class="chip c-grey">Cancelled</span>';
   const rm=reminderState(r);
   const btn=(cls,label,kind,arg)=>`<span class="chip ${cls} clickable-chip" data-rem-row="${r.id}" data-rem="${kind}" data-arg="${arg}" title="Click to send this email now">${label}</span>`;
   if(rm.fullEscalate!==null) return btn('c-red','🚨 Escalate CEO · full pay ovd '+rm.fullEscalate+'d','fullEsc',rm.fullEscalate);
@@ -2604,6 +2612,7 @@ document.getElementById('btnAdd').onclick=()=>{
   addModal.classList.add('on'); document.getElementById('aName').focus();
 };
 document.getElementById('aCancel').onclick=()=>addModal.classList.remove('on');
+document.getElementById('aClose2').onclick=()=>addModal.classList.remove('on');
 document.getElementById('aSave').onclick=async()=>{
   const name=document.getElementById('aName').value.trim();
   const tokenDate=document.getElementById('aDate').value;
@@ -2630,7 +2639,7 @@ function callListData(){
   const out=[];
   RECORDS.forEach(r=>{
     const d=derive(r);
-    if(d.stage==='Completed'||d.stage==='Refund done') return;
+    if(d.stage==='Completed'||d.stage==='Refund done'||d.stage==='Cancelled'||r.cancelled) return;
     let urgency=null;
     if(d.next.tone==='warn'||d.flags.length) urgency='red';
     else {
@@ -2683,7 +2692,7 @@ function callListText(){
   return t;
 }
 document.getElementById('btnCallList').onclick=()=>{ renderCallList(); document.getElementById('callModal').classList.add('on'); };
-document.getElementById('callClose').onclick=()=>document.getElementById('callModal').classList.remove('on');
+document.getElementById('callClose2').onclick=()=>document.getElementById('callModal').classList.remove('on');
 document.getElementById('callCopy').onclick=async()=>{
   const txt=callListText();
   try{ await navigator.clipboard.writeText(txt); toast('Call list copied.'); }
@@ -2793,6 +2802,7 @@ document.getElementById('btnSettings').onclick=()=>{
   setModal.classList.add('on');
 };
 document.getElementById('sCancel').onclick=()=>setModal.classList.remove('on');
+document.getElementById('sClose2').onclick=()=>setModal.classList.remove('on');
 document.getElementById('sSave').onclick=async()=>{
   const book=collectFmBook();
   CFG={...CFG,
@@ -2820,6 +2830,70 @@ document.getElementById('btnExport').onclick=()=>{
   a.click(); toast('Backup downloaded.');
 };
 document.getElementById('btnImport').onclick=()=>document.getElementById('fileIn').click();
+
+// ---- Export the currently-shown rows to CSV (opens in Excel) ----
+function exportRowsData(){
+  return filtered().map(r=>{
+    const d=derive(r);
+    return {
+      'Franchisee': r.name||'',
+      'Phone': r.phone||'',
+      'Email': r.email||'',
+      'Manager': r.fm||'',
+      'Model': r.model||'',
+      'District': r.district||'',
+      'State': r.state||'',
+      'Lead source': r.source||'',
+      'Lead date': r.leadDate?fmtD(r.leadDate):'',
+      'Stage': d.stage||'',
+      'Token date': r.tokenDate?fmtD(r.tokenDate):'',
+      'Agreement paid on': agreeCompletedDate(r)?fmtD(agreeCompletedDate(r)):'',
+      'Full paid on': r.fullPaidDate?fmtD(r.fullPaidDate):'',
+      'Total cost': Math.round(totalCost(r)),
+      'Collected': Math.round(collected(r)),
+      'Balance': r.decision==='Rejected'?'':Math.round(balance(r)),
+      'Next action': d.next?d.next.txt:''
+    };
+  });
+}
+document.getElementById('btnCsv').onclick=()=>{
+  const rows=exportRowsData();
+  if(!rows.length){ toast('No rows to export.'); return; }
+  const headers=Object.keys(rows[0]);
+  const cell=v=>{ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  const csv='\ufeff'+[headers.join(',')].concat(rows.map(r=>headers.map(h=>cell(r[h])).join(','))).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='mr-golisoda-franchisees-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); toast(rows.length+' rows exported to CSV.');
+};
+
+// ---- Export the currently-shown rows to a printable PDF (browser print dialog) ----
+document.getElementById('btnPdf').onclick=()=>{
+  const rows=exportRowsData();
+  if(!rows.length){ toast('No rows to export.'); return; }
+  const headers=Object.keys(rows[0]);
+  const enc=v=>String(v==null?'':v).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const money=new Set(['Total cost','Collected','Balance']);
+  const th=headers.map(h=>'<th>'+enc(h)+'</th>').join('');
+  const trs=rows.map(r=>'<tr>'+headers.map(h=>{
+    let v=r[h];
+    if(money.has(h)&&v!=='') v='₹'+Number(v).toLocaleString('en-IN');
+    return '<td>'+enc(v)+'</td>';
+  }).join('')+'</tr>').join('');
+  const w=window.open('','_blank');
+  w.document.write('<!doctype html><html><head><title>Mr GoliSoda Franchisees — '+new Date().toLocaleDateString('en-IN')+'</title>'
+    +'<style>body{font-family:Arial,Helvetica,sans-serif;padding:22px;color:#111}h2{margin:0 0 4px}p{margin:0 0 14px;color:#555;font-size:12px}'
+    +'table{border-collapse:collapse;width:100%;font-size:10px}th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;white-space:nowrap}'
+    +'th{background:#0f2e3d;color:#fff}tr:nth-child(even){background:#f4f7f9}</style></head><body>'
+    +'<h2>Mr GoliSoda — Franchisee Report</h2><p>'+new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+' · '+rows.length+' franchisee'+(rows.length>1?'s':'')+'</p>'
+    +'<table><thead><tr>'+th+'</tr></thead><tbody>'+trs+'</tbody></table></body></html>');
+  w.document.close();
+  setTimeout(()=>{ w.focus(); w.print(); },300);
+  toast('Opening PDF print view…');
+};
+
 document.getElementById('fileIn').onchange=e=>{
   const f=e.target.files[0]; if(!f) return;
   const rd=new FileReader();
