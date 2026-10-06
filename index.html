@@ -67,6 +67,12 @@ header.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom
 .flagbox h3{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--red);margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .flagbox h3 span.count{font-family:'JetBrains Mono',monospace;background:var(--red);color:#160308;font-size:11px;padding:2px 7px;border-radius:20px;font-weight:700}
 .flagrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid rgba(255,77,94,.15);font-size:13px;flex-wrap:wrap;cursor:pointer}
+.flaggroup{padding:9px 0;border-top:1px solid rgba(255,77,94,.15)}
+.flaggroup:hover{background:rgba(255,77,94,.05)}
+.flaggroup-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:3px}
+.flaggroup-head .nm{font-weight:600;color:#fff}
+.flaggroup-head .fm{font-size:11px;color:var(--faint)}
+.flaggroup-item{font-size:12px;color:var(--dim);padding:1px 0 1px 4px}
 .flagrow:hover{color:#fff}
 .flagrow .nm{font-weight:600;min-width:150px}
 .flagrow .ms{color:var(--dim);flex:1}
@@ -425,6 +431,7 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
       <div class="fld"><label>State / UT</label><select id="aState"></select></div>
       <div class="fld"><label>District</label><select id="aDistrict" disabled></select></div>
     </div>
+    <div class="fld" id="aZoneWrap" style="display:none"><label id="aZoneLabel">Zone / area</label><input id="aZone" placeholder="e.g. Anna Nagar, Whitefield"></div>
     <div class="grid2">
       <div class="fld"><label>Lead source</label><select id="aSource"></select></div>
       <div class="fld"><label>Lead generation date</label><input type="date" id="aLeadDate"></div>
@@ -572,7 +579,7 @@ let SB_OK=false, SB_LAST_ERR='';
 // The app uses camelCase internally; the Supabase columns are all lowercase.
 const SB_FIELD_MAP={
   id:'id', name:'name', phone:'phone', email:'email', model:'model', fm:'fm',
-  state:'state', district:'district', source:'source', leadDate:'leaddate', oldModelBudget:'oldmodelbudget',
+  state:'state', district:'district', zone:'zone', source:'source', leadDate:'leaddate', oldModelBudget:'oldmodelbudget',
   tokenDate:'tokendate',
   loaDone:'loadone', loaDate:'loadate', loaNotified:'loanotified',
   meetingDone:'meetingdone', meetingDate:'meetingdate',
@@ -955,6 +962,13 @@ function totalCost(r){
   if(r.model==='Old model') return (r.oldModelBudget||0)*(1+CFG.gst/100); // custom per-franchisee budget, GST added on top
   const base = r.model==='Master'?CFG.masterCost:CFG.unitCost;
   return base*(1+CFG.gst/100);
+}
+// Metro districts where multiple franchises exist — these require a Zone/area to disambiguate.
+const METRO_DISTRICTS=['chennai','bengaluru urban','bengaluru rural','bangalore','ahmedabad','hyderabad','mumbai','mumbai suburban','mumbai city','delhi','new delhi','kolkata','pune','greater chennai'];
+function isMetro(district){ return METRO_DISTRICTS.includes(String(district||'').trim().toLowerCase()); }
+// Location string for emails — includes the zone when present.
+function locStr(r){
+  return [r.zone, r.district, r.state].filter(Boolean).join(', ') || '—';
 }
 function brochureFor(r){
   if(r.model==='Old model') return ''; // custom legacy pricing — no standard brochure
@@ -1394,7 +1408,7 @@ function procurementList(model){
 }
 function opsBody(r){
   const bro=brochureFor(r);
-  const loc=[r.district,r.state].filter(Boolean).join(', ')||'their area';
+  const loc=locStr(r)||'their area';
   return `Hi Operations Team,\n\n`+
 `${r.name} has completed full payment for the ${r.model} Franchise in ${loc} — ${inr(collected(r))} received in total. ${r.fm?`${r.fm} is the franchise manager on this account${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}.`:''} Please begin procurement of the following:\n\n`+
 procurementList(r.model)+`\n\n`+
@@ -1451,7 +1465,7 @@ function fullReminderBody(r,daysDone,daysLeft){
 `This is a reminder regarding the full payment for ${r.name}'s Mr GoliSoda ${r.model} Franchise.\n\n`+
 `Franchisee     : ${r.name}\n`+
 `Contact number : ${r.phone||'—'}\n`+
-`Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
+`Location        : ${locStr(r)}\n`+
 `Days completed : ${daysDone} of 60 (since agreement amount paid)\n`+
 `Days remaining : ${daysLeft}\n`+
 `Balance due    : ${inr(balance(r))}\n\n`+
@@ -1473,7 +1487,7 @@ function fullEscalationBody(r,daysOver){
 `Franchisee     : ${r.name}\n`+
 `Contact number : ${r.phone||'—'}\n`+
 `Franchise model: ${r.model}\n`+
-`Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
+`Location        : ${locStr(r)}\n`+
 `Total collected: ${inr(collected(r))}\n`+
 `Balance pending: ${inr(balance(r))}\n`+
 `Overdue by     : ${daysOver} day(s)\n`+
@@ -1494,7 +1508,7 @@ function agreeReminderBody(r,daysLeft){
 `This is a reminder regarding the agreement amount for ${r.name}'s Mr GoliSoda ${r.model} Franchise.\n\n`+
 `Franchisee         : ${r.name}\n`+
 `Contact number     : ${r.phone||'—'}\n`+
-`Location            : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
+`Location            : ${locStr(r)}\n`+
 `Days remaining     : ${daysLeft}\n`+
 `Agreement remaining: ${inr(agreeRemaining(r))}\n\n`+
 `Please get the remaining amount from the client as soon as possible so we can proceed with the agreement.\n\nThanks.`;
@@ -1513,7 +1527,7 @@ function agreeEscalationBody(r,daysOver){
 `This is to report that the agreement amount for ${r.name}'s Mr GoliSoda ${r.model} Franchise has NOT been received within the allowed period.\n\n`+
 `Franchisee         : ${r.name}\n`+
 `Contact number     : ${r.phone||'—'}\n`+
-`Location            : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
+`Location            : ${locStr(r)}\n`+
 `Agreement remaining: ${inr(agreeRemaining(r))}\n`+
 `Overdue by         : ${daysOver} day(s)\n`+
 `Franchise mgr      : ${r.fm||'—'}${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}\n\n`+
@@ -1541,7 +1555,7 @@ function loaBody(r){
 `Contact number : ${r.phone||'—'}\n`+
 `Email          : ${r.email||'—'}\n`+
 `Franchise model: ${r.model}\n`+
-`Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
+`Location        : ${locStr(r)}\n`+
 `Token paid on  : ${fmtD(r.tokenDate)}\n`+
 `Franchise mgr  : ${r.fm||'—'}\n\n`+
 `Please share the LOI with the franchisee, and book/reserve their zone, at the earliest.\n\nThanks.`;
@@ -1576,7 +1590,7 @@ function refundBody(r){
 `Contact number : ${r.phone||'—'}\n`+
 `Email          : ${r.email||'—'}\n`+
 `Franchise model: ${r.model}\n`+
-`Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
+`Location        : ${locStr(r)}\n`+
 `Token paid on  : ${fmtD(r.tokenDate)}\n`+
 `Decision date  : ${fmtD(r.decisionDate)}\n\n`+
 `Please process the refund at the earliest.\n\nThanks.`;
@@ -1592,7 +1606,7 @@ function careBody(r){
 `Contact number : ${r.phone||'—'}\n`+
 `Email          : ${r.email||'—'}\n`+
 `Franchise model: ${r.model}\n`+
-`Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
+`Location        : ${locStr(r)}\n`+
 `Franchise mgr  : ${r.fm||'—'}${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}\n\n`+
 `Kindly initiate onboarding and stay in touch with the franchisee.\n\nThanks.`;
 }
@@ -1608,7 +1622,7 @@ function careMeetBody(r){
 `Contact number : ${r.phone||'—'}\n`+
 `Email          : ${r.email||'—'}\n`+
 `Franchise model: ${r.model}\n`+
-`Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
+`Location        : ${locStr(r)}\n`+
 `Franchise mgr  : ${r.fm||'—'}${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}\n\n`+
 `Please reach out and begin the onboarding process at the earliest.\n\nThanks.`;
 }
@@ -1710,7 +1724,7 @@ function agreementBody(r){
 `Contact number : ${r.phone||'—'}\n`+
 `Email          : ${r.email||'—'}\n`+
 `Franchise model: ${r.model}\n`+
-`Location        : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
+`Location        : ${locStr(r)}\n`+
 `Franchise mgr  : ${r.fm||'—'}${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}\n\n`+
 `Please send the agreement to the franchisee at the earliest.`+
 (CFG.legalResponsesLink?`\n\nThey have paid the agreement amount — the details are in the responses sheet below:\n${CFG.legalResponsesLink}`:'')+
@@ -1732,7 +1746,7 @@ function escalationText(r,d){
 `Contact number: ${r.phone||'—'}\n`+
 `Email         : ${r.email||'—'}\n`+
 `Model         : ${r.model}\n`+
-`Location      : ${[r.district,r.state].filter(Boolean).join(', ')||'—'}\n`+
+`Location      : ${locStr(r)}\n`+
 `Current stage : ${d.stage}\n`+
 `Issue         : ${overdue}\n`+
 (d.flags.length>1?`Other flags   : ${d.flags.slice(1).join('; ')}\n`:'')+
@@ -1848,12 +1862,17 @@ function renderKPIs(){
 
 function renderFlags(){
   const scope=kpiScope();
-  const list=[];
-  scope.forEach(r=>derive(r).flags.forEach(f=>list.push({r,f})));
+  // group flags by franchise
+  const groups=[];
+  scope.forEach(r=>{
+    const fl=derive(r).flags;
+    if(fl.length) groups.push({r, flags:fl});
+  });
+  const totalFlags=groups.reduce((s,g)=>s+g.flags.length,0);
   const box=document.getElementById('flagbox');
   const collapsed = FLAGS_COLLAPSED;
   const scopeLabel = view.fm ? (' · '+esc(view.fm)) : (view.model!=='all'?(' · '+view.model):'');
-  if(!list.length){
+  if(!totalFlags){
     box.style.borderColor='rgba(37,193,154,.3)';
     box.style.background='linear-gradient(180deg,rgba(37,193,154,.07),transparent 70%)';
     box.innerHTML=`<div class="allclear">● Nothing overdue${scopeLabel}. Every clock is inside its window.</div>`;
@@ -1861,12 +1880,17 @@ function renderFlags(){
   }
   box.style.borderColor='rgba(255,77,94,.32)';
   box.style.background='linear-gradient(180deg,rgba(255,77,94,.09),transparent 70%)';
-  box.innerHTML=`<h3 id="flagHead" style="cursor:pointer;user-select:none">${collapsed?'▶':'▼'} Escalate now <span class="count">${list.length}</span><span style="font-size:11px;color:var(--faint);font-weight:400">${scopeLabel}</span></h3>`+
-    (collapsed?'':list.map(x=>`<div class="flagrow" data-open="${x.r.id}">
-      <span class="nm">${esc(x.r.name)}</span>
-      <span class="ms">${esc(x.f)}</span>
-      <span class="fm">${esc(x.r.fm||'unassigned')} · ${esc(x.r.model)}</span>
-    </div>`).join(''));
+  box.innerHTML=`<h3 id="flagHead" style="cursor:pointer;user-select:none">${collapsed?'▶':'▼'} Escalate now <span class="count">${totalFlags}</span><span style="font-size:11px;color:var(--faint);font-weight:400">${scopeLabel}</span></h3>`+
+    (collapsed?'':groups.map(g=>{
+      const loc=[g.r.district,g.r.zone?('('+g.r.zone+')'):''].filter(Boolean).join(' ');
+      return `<div class="flaggroup" data-open="${g.r.id}" style="cursor:pointer">
+      <div class="flaggroup-head">
+        <span class="nm">${esc(g.r.name)}${g.flags.length>1?' <span class="count" style="font-size:10px">'+g.flags.length+'</span>':''}</span>
+        <span class="fm">${esc(g.r.fm||'unassigned')} · ${esc(g.r.model)}${loc?' · '+esc(loc):''}</span>
+      </div>
+      ${g.flags.map(f=>`<div class="flaggroup-item">• ${esc(f)}</div>`).join('')}
+    </div>`;
+    }).join(''));
 }
 
 function chip(c){ return c?`<span class="chip ${c.cls}">${c.txt}</span>`:'<span class="chip c-grey">—</span>'; }
@@ -1880,10 +1904,13 @@ function nextReminderCell(r,d){
   if(rm.agreeEscalate!==null) return btn('c-red','🚨 Escalate CEO · agreement ovd '+rm.agreeEscalate+'d','agreeEsc',rm.agreeEscalate);
   if(rm.fullDue.length) return btn('c-amber','⏰ FM reminder · full pay '+rm.fullDue[0].left+'d left','fullDue',rm.fullDue[0].days+'|'+rm.fullDue[0].left);
   if(rm.agreeDue!==null) return btn('c-amber','⏰ FM reminder · agreement '+rm.agreeDue+'d left','agreeDue',rm.agreeDue);
-  if(r.decision!=='Rejected' && !r.meetingDone) return '<span class="chip c-amber">📋 Hold eligibility meeting</span>';
-  if(r.decision!=='Rejected' && r.meetingDone && !r.decision) return '<span class="chip c-amber">⏳ Awaiting founder\'s decision</span>';
-  // no formal reminder — surface the next operational action briefly
-  if(d.next && d.next.tone==='warn') return '<span class="chip c-amber">'+esc(d.next.txt)+'</span>';
+  // Otherwise show the accurate next operational action for the current stage
+  // (get contact details → create ERP contact → issue LOI → LOI signed → meeting → decision → …),
+  // computed by derive(). Colour it red/amber when it's a warning, otherwise a neutral blue chip.
+  if(d.next && d.next.txt){
+    const cls = d.next.tone==='warn' ? 'c-red' : (d.next.tone==='done' ? 'c-green' : 'c-blue');
+    return '<span class="chip '+cls+'">'+esc(d.next.txt)+'</span>';
+  }
   return '<span style="color:var(--faint)">—</span>';
 }
 
@@ -2047,7 +2074,7 @@ function renderDrawer(){
   const d=derive(r);
   document.getElementById('dName').textContent=r.name;
   document.getElementById('dMeta').innerHTML=
-    `${esc(r.phone||'no number')} · ${esc(r.fm||'unassigned')} · ${r.model} · ${esc([r.district,r.state].filter(Boolean).join(', ')||'location not set')}${r.source?' · via '+esc(r.source):''}${r.leadDate?' · lead '+fmtD(r.leadDate):''}`;
+    `${esc(r.phone||'no number')} · ${esc(r.fm||'unassigned')} · ${r.model} · ${esc(locStr(r)||'location not set')}${r.source?' · via '+esc(r.source):''}${r.leadDate?' · lead '+fmtD(r.leadDate):''}`;
 
   const cost=totalCost(r), coll=collected(r), bal=balance(r);
   const payments=(r.payments||[]);
@@ -2353,6 +2380,7 @@ function renderDrawer(){
         <div class="fld"><label>State / UT</label><select data-f="state" id="dState"></select></div>
         <div class="fld"><label>District</label><select data-f="district" id="dDistrict"></select></div>
       </div>
+      <div class="fld"><label>Zone / area${isMetro(r.district)?' (required)':' (optional)'}</label><input data-f="zone" value="${esc(r.zone||'')}" placeholder="e.g. Anna Nagar, Whitefield"></div>
       <div class="grid2">
         <div class="fld"><label>Lead source</label><select id="dSource"></select></div>
         <div class="fld"><label>Lead generation date</label><input type="date" data-f="leadDate" value="${r.leadDate||''}"></div>
@@ -2465,7 +2493,7 @@ document.addEventListener('click',e=>{
   const flagHead=e.target.closest('#flagHead');
   if(flagHead){ FLAGS_COLLAPSED=!FLAGS_COLLAPSED; renderFlags(); return; }
   const row=e.target.closest('[data-open]');
-  if(row){ openDrawer(row.dataset.open); }
+  if(row){ const cm=document.getElementById('callModal'); if(cm) cm.classList.remove('on'); openDrawer(row.dataset.open); }
 });
 
 function openDrawer(id){
@@ -2586,7 +2614,15 @@ document.getElementById('search').oninput=e=>{view.q=e.target.value;renderTable(
 
 /* add modal */
 const addModal=document.getElementById('addModal');
-document.getElementById('aState').onchange=e=>fillDistrictSelect(document.getElementById('aDistrict'),e.target.value,'');
+document.getElementById('aState').onchange=e=>{ fillDistrictSelect(document.getElementById('aDistrict'),e.target.value,''); toggleAddZone(); };
+document.getElementById('aDistrict').onchange=()=>toggleAddZone();
+function toggleAddZone(){
+  const dist=document.getElementById('aDistrict').value;
+  const wrap=document.getElementById('aZoneWrap');
+  const lbl=document.getElementById('aZoneLabel');
+  if(dist){ wrap.style.display='block'; lbl.textContent=isMetro(dist)?'Zone / area (required for '+dist+')':'Zone / area (optional)'; }
+  else { wrap.style.display='none'; }
+}
 function fillSourceSelect(sel,current){
   const list=(CFG.leadSources&&CFG.leadSources.length?CFG.leadSources:['Other']);
   sel.innerHTML='<option value="">Select source</option>'+list.map(s=>`<option ${s===current?'selected':''}>${esc(s)}</option>`).join('');
@@ -2608,6 +2644,8 @@ document.getElementById('btnAdd').onclick=()=>{
   document.getElementById('aModel').value='Master';
   document.getElementById('aOldBudget').value='';
   document.getElementById('aOldBudgetWrap').style.display='none';
+  document.getElementById('aZone').value='';
+  document.getElementById('aZoneWrap').style.display='none';
   document.getElementById('aDate').value=new Date().toISOString().slice(0,10);
   addModal.classList.add('on'); document.getElementById('aName').focus();
 };
@@ -2620,11 +2658,14 @@ document.getElementById('aSave').onclick=async()=>{
   if(!tokenDate) return toast('Enter the ₹50,000 token payment date.');
   let source=document.getElementById('aSource').value;
   if(source==='Other'){ const o=document.getElementById('aSourceOther').value.trim(); source=o||'Other'; }
+  const district=document.getElementById('aDistrict').value.trim();
+  const zone=document.getElementById('aZone').value.trim();
+  if(isMetro(district) && !zone) return toast('Enter the Zone / area — required for '+district+'.');
   RECORDS.unshift({
     id:uid(), name, phone:document.getElementById('aPhone').value.trim(), email:document.getElementById('aEmail').value.trim(),
     fm:document.getElementById('aFM').value, model:document.getElementById('aModel').value,
     oldModelBudget:document.getElementById('aModel').value==='Old model'?(+document.getElementById('aOldBudget').value||0):0,
-    state:document.getElementById('aState').value.trim(), district:document.getElementById('aDistrict').value.trim(),
+    state:document.getElementById('aState').value.trim(), district, zone,
     source, leadDate:document.getElementById('aLeadDate').value||'',
     tokenDate, loaDone:false, meetingDone:false, decision:'', payments:[]
   });
@@ -2667,8 +2708,8 @@ function renderCallList(){
     <div class="cl-group">
       <h5>${esc(fm)} · ${list.length}</h5>
       ${list.map(x=>`<div class="cl-item ${x.urgency}">
-        <div class="cl-main">
-          <div class="cl-nm">${esc(x.r.name)}<small>${esc(x.r.phone||'no number')}</small></div>
+        <div class="cl-main" data-open="${x.r.id}" style="cursor:pointer">
+          <div class="cl-nm">${esc(x.r.name)}<small>${esc(x.r.phone||'no number')}${x.r.district?' · '+esc(x.r.district)+(x.r.zone?' ('+esc(x.r.zone)+')':''):''}</small></div>
           <div class="cl-task ${x.urgency}">${esc(x.d.next.txt)} · ${x.r.model}</div>
         </div>
         <div class="rowbtns" style="margin-top:0">
@@ -2842,6 +2883,7 @@ function exportRowsData(){
       'Manager': r.fm||'',
       'Model': r.model||'',
       'District': r.district||'',
+      'Zone': r.zone||'',
       'State': r.state||'',
       'Lead source': r.source||'',
       'Lead date': r.leadDate?fmtD(r.leadDate):'',
