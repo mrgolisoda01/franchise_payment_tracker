@@ -178,7 +178,8 @@ tbody tr.hasflag td.freeze-1{box-shadow:inset 3px 0 0 var(--red)}
 .fm-row input{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;min-width:0}
 .fm-del{width:30px;height:30px;border-radius:8px;background:rgba(255,77,94,.12);color:var(--red);font-size:17px;line-height:1;border:1px solid rgba(255,77,94,.28)}
 .fm-del:hover{background:var(--red);color:#fff}
-@media(max-width:560px){.fm-row{grid-template-columns:1fr 1fr auto}.fm-row .fm-email{grid-column:1/3}}
+@media(max-width:560px){.fm-row{grid-template-columns:1fr 1fr auto}.fm-row .fm-email{grid-column:1/3}.sh-row .sh-email{grid-column:1/3}.sh-row .sh-state{grid-column:1/3}}
+.sh-row select.sh-state{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;min-width:0;color:#fff}
 .sbdot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none;transition:.3s}
 .sbdot.on{background:var(--green);box-shadow:0 0 0 3px rgba(37,193,154,.2)}
 .sbdot.off{background:var(--red);box-shadow:0 0 0 3px rgba(255,77,94,.2)}
@@ -187,7 +188,10 @@ tbody tr.hasflag td.freeze-1{box-shadow:inset 3px 0 0 var(--red)}
 .tpl-box{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:12.5px;font-family:inherit;resize:vertical;line-height:1.5}
 .tpl-reset{font-size:10px;color:var(--blue);background:rgba(0,163,224,.12);border:1px solid rgba(0,163,224,.3);border-radius:6px;padding:2px 8px}
 .tpl-reset:hover{background:var(--blue);color:#04121c}
-.district-chip{display:inline-block;margin-top:5px;padding:2px 8px;border-radius:6px;background:rgba(255,210,30,.14);color:var(--yellow);font-size:10.5px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.district-chip{display:inline-block;padding:2px 8px;border-radius:6px;background:rgba(255,210,30,.14);color:var(--yellow);font-size:10.5px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.loccell{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:5px}
+.loccell .district-chip{font-size:12px;letter-spacing:.3px;padding:3px 10px;background:rgba(255,210,30,.18);border:1px solid rgba(255,210,30,.35)}
+.zone-chip{display:inline-block;padding:2px 8px;border-radius:6px;background:rgba(0,163,224,.14);color:var(--brand);font-size:10.5px;font-weight:600;font-family:'JetBrains Mono',monospace;border:1px solid rgba(0,163,224,.3)}
 .reminder-box{margin-top:12px;padding:11px 13px;border-radius:10px;border:1px solid rgba(0,163,224,.3);background:rgba(0,163,224,.06)}
 .reminder-box.amber{background:rgba(255,176,32,.08);border-color:rgba(255,176,32,.35)}
 .reminder-box.red{background:rgba(255,77,94,.09);border-color:rgba(255,77,94,.4)}
@@ -305,6 +309,7 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
     </div>
     <select class="filt" id="fStage">
       <option value="">All stages</option>
+      <option value="__active">All except cancelled</option>
       <option>Token paid</option>
       <option>ERP contact pending</option>
       <option>LOI pending</option>
@@ -491,6 +496,10 @@ details.sect-wrap .sect-body{padding:14px 16px 16px}
     <div class="sect-divider">Franchise managers — phone book</div>
     <div id="fmBook"></div>
     <button class="btn ghost" id="fmAddRow" style="width:100%;margin-top:4px">+ Add manager</button>
+    <div class="sect-divider">State heads — phone book</div>
+    <p class="hint" style="margin:-4px 0 8px;color:var(--faint);font-size:12px">Auto-CC'd to the onboarding email when a franchise in their state pays the agreement amount.</p>
+    <div id="shBook"></div>
+    <button class="btn ghost" id="shAddRow" style="width:100%;margin-top:4px">+ Add state head</button>
     <div class="sect-divider">Internal teams — used for LOI, refund, agreement & onboarding hand-offs</div>
     <div class="grid2">
       <div class="fld"><label>Finance team name</label><input id="sFinName" placeholder="Finance Team"></div>
@@ -658,6 +667,7 @@ async function sbSaveSettings(cfg){
     mastercost:cfg.masterCost, unitcost:cfg.unitCost, ficocost:cfg.ficoCost, brochureunit:cfg.brochureUnit||"", brochuremaster:cfg.brochureMaster||"", brochurefico:cfg.brochureFico||"", agreementformlink:cfg.agreementFormLink||"", legalresponseslink:cfg.legalResponsesLink||"", opsextracc:cfg.opsExtraCc||"", baemail:cfg.baEmail||"", baphone:cfg.baPhone||"", token:cfg.token, agreetotal:cfg.agreeTotal, gst:cfg.gst,
     win9:cfg.win9, win3:cfg.win3, win60:cfg.win60, winloa:cfg.winLoa, winrefund:cfg.winRefund,
     fms:cfg.fms||[], fmphones:cfg.fmPhones||{}, fmemails:cfg.fmEmails||{},
+    stateheads:cfg.stateHeads||{},
     financename:cfg.financeName||'', financeemail:cfg.financeEmail||'', financephone:cfg.financePhone||'',
     legalname:cfg.legalName||'', legalemail:cfg.legalEmail||'', legalphone:cfg.legalPhone||'',
     carename:cfg.careName||'', careemail:cfg.careEmail||'', carephone:cfg.carePhone||'',
@@ -674,6 +684,7 @@ function settingsRowToCfg(row){
     masterCost:row.mastercost, unitCost:row.unitcost, ficoCost:row.ficocost||0, brochureUnit:row.brochureunit||"", brochureMaster:row.brochuremaster||"", brochureFico:row.brochurefico||"", agreementFormLink:row.agreementformlink||"", legalResponsesLink:row.legalresponseslink||"", opsExtraCc:row.opsextracc||"", baEmail:row.baemail||"", baPhone:row.baphone||"", token:row.token, agreeTotal:row.agreetotal, gst:row.gst,
     win9:row.win9, win3:row.win3, win60:row.win60, winLoa:row.winloa, winRefund:row.winrefund,
     fms:row.fms||[], fmPhones:row.fmphones||{}, fmEmails:row.fmemails||{},
+    stateHeads:row.stateheads||{},
     financeName:row.financename||'', financeEmail:row.financeemail||'', financePhone:row.financephone||'',
     legalName:row.legalname||'', legalEmail:row.legalemail||'', legalPhone:row.legalphone||'',
     careName:row.carename||'', careEmail:row.careemail||'', carePhone:row.carephone||'',
@@ -702,6 +713,7 @@ const DEFAULTS={
   win9:9, win3:3, win60:60, winLoa:3, winRefund:7,
   fms:['Jeshwanth Kumar','Ram Kishore','Suresh N','Rajendra','Nikhil Rawat','Nikhil Ambhore','Sanjay'],
   fmPhones:{}, fmEmails:{},
+  stateHeads:{},   // { "Tamil Nadu": {name:'...', email:'...'} }  — auto-CC'd on agreement-paid onboarding email
   financeName:'Finance Team', financeEmail:'', financePhone:'',
   legalName:'Legal Team', legalEmail:'', legalPhone:'',
   careName:'Arun (Franchisee Care)', careEmail:'', carePhone:'',
@@ -1338,6 +1350,20 @@ function ccFor(r){
   if(fe && !list.includes(fe)) list.push(fe);
   return list.join(',');
 }
+// State head for a record's state (from the Settings phone book)
+function stateHeadFor(r){
+  const st=r&&r.state?String(r.state).trim():'';
+  if(!st) return null;
+  const sh=(CFG.stateHeads||{})[st];
+  return (sh && (sh.name||sh.email)) ? {name:sh.name||'',email:sh.email||'',state:st} : null;
+}
+// CC for the onboarding (Care) email: usual CC + the franchise's state head
+function ccForCareMeet(r){
+  const list=ccFor(r)?ccFor(r).split(',').filter(Boolean):[];
+  const sh=stateHeadFor(r);
+  if(sh && sh.email && !list.includes(sh.email)) list.push(sh.email);
+  return list.join(',');
+}
 // Full CC for the completion email: every configured team + Ajay + the FM
 const ANNOUNCE_TEAM=[
   {name:'Siva',    role:'Operation Head',                                    email:'operationhead@safc.ltd'},
@@ -1614,20 +1640,23 @@ function careBodyShort(r){
   return `Hi Franchisee Care,\n\n${r.name} has completed full payment (${r.model}). Please begin onboarding.\n\n[Full details copied to your clipboard — paste below]\n\nThanks.`;
 }
 // Care notification specifically at agreement-complete: schedule the onboarding meet
-function careMeetSubject(r){ return 'Onboarding: Begin — '+r.name+' ('+r.model+' Franchise, '+(r.district||'district TBD')+')'; }
+function careMeetSubject(r){ return 'Onboarding meeting: Begin — '+r.name+' ('+r.model+' Franchise, '+(r.district||'district TBD')+')'; }
 function careMeetBody(r){
+  const sh=stateHeadFor(r);
+  const shLine=sh?`${sh.name||'(name not set)'}${sh.email?' <'+sh.email+'>':''}`:`(not set for ${r.state||'this state'} — add in Settings > State heads)`;
   return `Hi Franchisee Care,\n\n`+
-`${r.name} has paid the full franchise amount. Please connect with them and start the onboarding process.\n\n`+
+`${r.name} has paid the agreement amount. You can now start the onboarding meeting with the respective state head.\n\n`+
 `Franchisee     : ${r.name}\n`+
 `Contact number : ${r.phone||'—'}\n`+
 `Email          : ${r.email||'—'}\n`+
 `Franchise model: ${r.model}\n`+
 `Location        : ${locStr(r)}\n`+
-`Franchise mgr  : ${r.fm||'—'}${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}\n\n`+
-`Please reach out and begin the onboarding process at the earliest.\n\nThanks.`;
+`Franchise mgr  : ${r.fm||'—'}${fmPhone(r.fm)?' ('+fmPhone(r.fm)+')':''}\n`+
+`State head     : ${shLine}\n\n`+
+`The state head is copied on this email. Kindly coordinate and schedule the onboarding meeting at the earliest.\n\nThanks.`;
 }
 function careMeetBodyShort(r){
-  return `Hi Franchisee Care,\n\n${r.name} has paid the full amount (${r.model}). Please start the onboarding process.\n\n[Full details copied to your clipboard — paste below]\n\nThanks.`;
+  return `Hi Franchisee Care,\n\n${r.name} has paid the agreement amount (${r.model}). Please start the onboarding meeting with the respective state head.\n\n[Full details copied to your clipboard — paste below]\n\nThanks.`;
 }
 // Message to the franchisee at agreement-complete: agreement coming + onboarding meet
 // (1) Fires as soon as the agreement amount is paid — a simple acknowledgment.
@@ -1669,7 +1698,7 @@ function custAgreeSignWa(r){
   if(!num){ toast('No valid WhatsApp number for '+r.name+'.'); return; }
   window.open('https://wa.me/'+num+'?text='+encodeURIComponent(custAgreeSignWaText(r)),'_blank');
 }
-function notifyCareMeetEmail(r){ mailto('customersuccess@safc.ltd',careMeetSubject(r),careMeetBody(r),ccFor(r)); }
+function notifyCareMeetEmail(r){ mailto('customersuccess@safc.ltd',careMeetSubject(r),careMeetBody(r),ccForCareMeet(r)); }
 function notifyCareMeetWa(r){
   const num=waNumber(CFG.carePhone);
   if(!num){ toast('Add the Franchisee Care WhatsApp number in Settings first.'); return; }
@@ -1801,7 +1830,8 @@ function filtered(){
   return RECORDS.filter(r=>{
     const d=derive(r);
     if(view.model!=='all'&&r.model!==view.model) return false;
-    if(view.stage&&d.stage!==view.stage) return false;
+    if(view.stage==='__active'){ if(d.stage==='Cancelled') return false; }
+    else if(view.stage&&d.stage!==view.stage) return false;
     if(view.fm&&r.fm!==view.fm) return false;
     if(view.source&&(r.source||'')!==view.source) return false;
     if(view.flag==='red'&&!d.flags.length) return false;
@@ -1926,7 +1956,8 @@ function renderTable(){
       : (d.stage==='Agreement pending') ? 'row-pending'
       : '';
     return `<tr data-open="${r.id}" class="${d.flags.length?'hasflag':''} ${rowHighlight}">
-      <td class="freeze freeze-1"><div class="nmcell">${esc(r.name)}<small>${esc(r.phone||'no number')}${r.district?' · '+esc(r.district):''}${r.leadDate?' · lead '+fmtD(r.leadDate):''}</small></div>
+      <td class="freeze freeze-1"><div class="nmcell">${esc(r.name)}<small>${esc(r.phone||'no number')}${r.leadDate?' · lead '+fmtD(r.leadDate):''}</small></div>
+        ${r.district?`<div class="loccell"><span class="district-chip">${esc(r.district)}</span>${r.zone?`<span class="zone-chip">${esc(r.zone)}</span>`:''}</div>`:(r.zone?`<div class="loccell"><span class="zone-chip">${esc(r.zone)}</span></div>`:'')}
         <div class="paytags">
           ${r.tokenDate?`<span class="paytag ta" title="Token advance · ${fmtD(r.tokenDate)}">TA ${fmtD(r.tokenDate)}</span>`:''}
           ${agreeCompletedDate(r)?`<span class="paytag ag" title="Agreement amount · ${fmtD(agreeCompletedDate(r))}">AG ${fmtD(agreeCompletedDate(r))}</span>`:''}
@@ -2307,6 +2338,12 @@ function renderDrawer(){
             ${waNumber(r.phone)?`<button class="wabtn" id="custAgreeRecdWa" style="margin-top:0">WhatsApp Franchisee</button>`:''}
             <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="custAgreeRecdNotified" ${r.custAgreeRecdNotified?'checked':''}> Sent</label>
           </div>
+          <div class="handoff-btns" style="margin-top:8px">
+            <span style="font-size:11px;color:var(--faint);width:100%">Franchisee Care — start onboarding meeting${(()=>{const sh=stateHeadFor(r);return sh?' (CC: '+esc(sh.name||sh.email)+' — '+esc(r.state)+' state head)':' (⚠ no state head set for '+esc(r.state||'this state')+' — add in Settings)';})()}:</span>
+            <button class="mailbtn" id="careMailA">Email Care</button>
+            <button class="wabtn" id="careWaA" style="margin-top:0">WhatsApp Care</button>
+            <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="careNotifiedAgree" ${r.careNotifiedAgree?'checked':''}> Sent</label>
+          </div>
           <div class="handoff-btns" style="margin-top:8px;border-top:1px dashed var(--line);padding-top:10px">
             <label class="chk"><input type="checkbox" data-f="agreementIssued" ${r.agreementIssued?'checked':''}> Legal has issued the signed agreement${r.agreementIssuedDate?' ('+fmtD(r.agreementIssuedDate)+')':''}</label>
           </div>
@@ -2323,12 +2360,6 @@ function renderDrawer(){
           <div class="handoff-btns" style="margin-top:6px">
             <span style="font-size:11px;color:var(--faint);width:100%">Welcome email to <b>${esc(r.name)}</b> — CC: NSM, FM &amp; Customer Success:</span>
             ${r.email?`<button class="mailbtn" id="completionMail">Send welcome email</button>`:'<span style="font-size:11px;color:var(--red)">Add the franchisee email in Record details first.</span>'}
-          </div>
-          <div class="handoff-btns" style="margin-top:8px">
-            <span style="font-size:11px;color:var(--faint);width:100%">Franchisee Care — start onboarding process:</span>
-            <button class="mailbtn" id="careMailA">Email Care</button>
-            <button class="wabtn" id="careWaA" style="margin-top:0">WhatsApp Care</button>
-            <label class="chk" style="margin:0 0 0 auto"><input type="checkbox" data-f="careNotifiedAgree" ${r.careNotifiedAgree?'checked':''}> Sent</label>
           </div>
           <div class="handoff-btns" style="margin-top:8px">
             <span style="font-size:11px;color:var(--faint);width:100%">Procurement email to Operations — CC: all departments &amp; admin${brochureFor(r)?' (brochure link included)':''}:</span>
@@ -2728,7 +2759,10 @@ function callListText(){
   items.forEach(x=>{const k=x.r.fm||'Unassigned';(groups[k]=groups[k]||[]).push(x);});
   Object.entries(groups).forEach(([fm,list])=>{
     t+='\n'+fm+':\n';
-    list.forEach((x,i)=>{ t+=`  ${i+1}. ${x.r.name} (${x.r.phone||'no number'}) — ${x.d.next.txt} [${x.urgency==='red'?'OVERDUE':'due soon'}]\n`; });
+    list.forEach((x,i)=>{
+      const loc=[x.r.district,x.r.zone].filter(Boolean).join(' · ');
+      t+=`  ${i+1}. ${x.r.name} (${x.r.phone||'no number'})${loc?' — '+loc:''} — ${x.d.next.txt} [${x.urgency==='red'?'OVERDUE':'due soon'}]\n`;
+    });
   });
   return t;
 }
@@ -2770,6 +2804,35 @@ function collectFmBook(){
     const e=row.querySelector('.fm-email').value.trim(); if(e) emails[nm]=e;
   });
   return {fms,fmPhones:phones,fmEmails:emails};
+}
+/* ---- State-head phone book UI ---- */
+function shBookRow(state,name,email){
+  const opts='<option value="">Select state / UT</option>'+Object.keys(IN_STATES).sort().map(s=>`<option ${s===state?'selected':''}>${esc(s)}</option>`).join('');
+  return `<div class="fm-row sh-row">
+    <select class="sh-state">${opts}</select>
+    <input class="sh-name" placeholder="State head name" value="${esc(name||'')}">
+    <input class="sh-email" type="email" placeholder="state head email" value="${esc(email||'')}">
+    <button class="fm-del" title="Remove">×</button>
+  </div>`;
+}
+function renderShBook(){
+  const box=document.getElementById('shBook');
+  const entries=Object.entries(CFG.stateHeads||{});
+  const rows=(entries.length?entries:[['',{name:'',email:''}]]).map(([st,v])=>shBookRow(st,(v||{}).name,(v||{}).email)).join('');
+  box.innerHTML=rows;
+}
+function collectShBook(){
+  const rows=[...document.querySelectorAll('#shBook .sh-row')];
+  const heads={};
+  rows.forEach(row=>{
+    const st=row.querySelector('.sh-state').value.trim();
+    if(!st) return;
+    const nm=row.querySelector('.sh-name').value.trim();
+    const em=row.querySelector('.sh-email').value.trim();
+    if(!nm && !em) return;
+    heads[st]={name:nm,email:em};
+  });
+  return heads;
 }
 // ---- message template editors ----
 function defaultTemplateText(key){
@@ -2826,6 +2889,12 @@ document.getElementById('fmAddRow').onclick=()=>{
 document.getElementById('fmBook').addEventListener('click',e=>{
   if(e.target.classList.contains('fm-del')){ e.target.closest('.fm-row').remove(); }
 });
+document.getElementById('shAddRow').onclick=()=>{
+  document.getElementById('shBook').insertAdjacentHTML('beforeend',shBookRow('','',''));
+};
+document.getElementById('shBook').addEventListener('click',e=>{
+  if(e.target.classList.contains('fm-del')){ e.target.closest('.sh-row').remove(); }
+});
 
 document.getElementById('btnSettings').onclick=()=>{
   sMaster.value=CFG.masterCost; sUnit.value=CFG.unitCost; sToken.value=CFG.token;
@@ -2834,7 +2903,7 @@ document.getElementById('btnSettings').onclick=()=>{
   sAgreeForm.value=CFG.agreementFormLink||''; sLegalResp.value=CFG.legalResponsesLink||''; sOpsCc.value=CFG.opsExtraCc||'';
   sBaEmail.value=CFG.baEmail||''; sBaPhone.value=CFG.baPhone||'';
   sAgree.value=CFG.agreeTotal; sGst.value=CFG.gst; sW9.value=CFG.win9; sW3.value=CFG.win3;
-  sW60.value=CFG.win60; sWloa.value=CFG.winLoa; sWref.value=CFG.winRefund; renderFmBook();
+  sW60.value=CFG.win60; sWloa.value=CFG.winLoa; sWref.value=CFG.winRefund; renderFmBook(); renderShBook();
   sFinName.value=CFG.financeName||''; sFinEmail.value=CFG.financeEmail||''; sFinPhone.value=CFG.financePhone||'';
   sLegName.value=CFG.legalName||''; sLegEmail.value=CFG.legalEmail||''; sLegPhone.value=CFG.legalPhone||'';
   sCareName.value=CFG.careName||''; sCareEmail.value=CFG.careEmail||''; sCarePhone.value=CFG.carePhone||'';
@@ -2846,7 +2915,9 @@ document.getElementById('sCancel').onclick=()=>setModal.classList.remove('on');
 document.getElementById('sClose2').onclick=()=>setModal.classList.remove('on');
 document.getElementById('sSave').onclick=async()=>{
   const book=collectFmBook();
+  const stateHeads=collectShBook();
   CFG={...CFG,
+       stateHeads:stateHeads,
        masterCost:+sMaster.value,unitCost:+sUnit.value,ficoCost:+sFico.value,token:+sToken.value,agreeTotal:+sAgree.value,
        brochureUnit:sBroUnit.value.trim(),brochureMaster:sBroMaster.value.trim(),brochureFico:sBroFico.value.trim(),
        agreementFormLink:sAgreeForm.value.trim(),legalResponsesLink:sLegalResp.value.trim(),opsExtraCc:sOpsCc.value.trim(),
